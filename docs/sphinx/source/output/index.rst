@@ -90,10 +90,10 @@ Log Files
 
 Listed below are the output files of CMC with the variables printed out. 
 
-output.dyn.dat
+initial.dyn.dat
 ---------------
 
-The **output.dyn.dat** files contains various theoretical quantities pertaining 
+The **initial.dyn.dat** files contains various theoretical quantities pertaining 
 to the dynamical evolution of your cluster, such as theoretical core radius, 
 total mass, central density, central velocity dispersion, etc. This file may be 
 used to create, for example, plots of core radii or half-mass radii versus time 
@@ -125,22 +125,22 @@ the cluster evolves.
 ``Etot+Eoops``      Total energy + Eoops
 ``r_h``             Half-mass radius
 ``rho_0``           Core density
-``rc_spitzer``      Core radius as defined in Spitzer 1987: :math:`\sqrt{3  \sigma_0^2}{4 \pi \rho_0}`.
+``rc_spitzer``      Core radius as defined in Spitzer 1987: :math:`\sqrt{3  \sigma_0^2}{4 \pi \rho_0}`
 ``v0_rms``          Rms velocity dispersion at the cluster center
 ``rc_nb``           Core radius calculated with density weighted averages as in Casertano & Hut (1985)
 ``DMse``            Total mass loss from the cluster per time step due to stellar evolution [:math:`{M_{\odot}}`]
-``DMrejuv`` 	    Mass loss from rejuvenation per time step [:math:`{M_{\odot}}`]
-``N_c_nb``          Number of stars within the core: (4.0 / 3.0 * PI * cub(rc_nb) * (central.n / 2.0))
+``DMrejuv`` 	     Mass loss from rejuvenation per time step [:math:`{M_{\odot}}`]
+``N_c_nb``          Number of stars within the core: :math:`\frac{4 \pi}{3} rc_{\rm nb}^3  \frac{n_{\rm c}}{2}`
 ================  =====================================================
 
-output.binint.log
+initial.binint.log
 ------------------
 
 Over the course of the evolution of the cluster, single stars and binaries will 
 frequently undergo three- and four-body dynamical encounters, which are 
 integrated directly in CMC using the Fewbody package (Fregeau et al. 2007). The 
-file **output.binint.log** records all input and output parameters (e.g., 
-component masses, IDS, stellar types, semi-major axes, etc.) each type fewbody 
+file **initial.binint.log** records all input and output parameters (e.g., 
+component masses, IDS, stellar types, semi-major axes, etc.) each time fewbody 
 is called. 
 
 Every encounter information is printed between two lines of asterisks.
@@ -232,13 +232,13 @@ the ``binints`` object, a python list of dictionaries of every encounter:
         # If I wanted to know the escape speed of the cluster where this encouner occured, I can access that with
         print(binints[0].vesc_KMS)
 
-output.bh.dat
+initial.bh.dat
 -------------
 
 This file contains the number of BHs (as well as BH binaries, etc.) at each 
 dynamical time step. This is useful to plot, for example, the number of 
 retained BHs versus time. For BH mergers, you want to look in 
-**output.bhmerger.dat**, which records all BH-BH mergers that occur inside the 
+**initial.bhmerger.dat**, which records all BH-BH mergers that occur inside the 
 cluster during the cluster evolution.
 
 ==============================  =====================================================
@@ -257,12 +257,12 @@ cluster during the cluster evolution.
 ``fb_bh``						      Number of binaries containing a black hole / total number of systems containing a black hole 
 ==============================  =====================================================
 
-output.bh.esc.dat
+initial.bh.esc.dat
 ----------------
 This file contains the number of ejected BHs at each dynamical time step. It 
 includes the same columns in the **initial.bh.dat** file.
 
-output.bhmerger.dat
+initial.bhmerger.dat
 ---------------------
 
 List of all binary black hole mergers that occur in the cluster (note this does 
@@ -308,7 +308,7 @@ are four categories of mergers that occur inside the cluster:
         mergers, it's the last semi-major axis and eccentricity that were recorded in the cluster.
 
 
-output.collision.log
+initial.collision.log
 ---------------------
 
 This file lists stellar types and properties for all stellar collisions 
@@ -325,7 +325,7 @@ for further detail.
 ``typem``			              Merger stellar type
 ``type1``					        Stellar type of body_1
 ``type2``						     Stellar type of body_2 
-``b``                            impact parameter at infinity [:math:`R_{\odot}`]
+``b``                            Impact parameter at infinity [:math:`R_{\odot}`]
 ``vinf``                         Relative velocity of two objects at infinity [km/s] 
 ``rad1``                         Radius of body_1
 ``rad2``                         Radius of body_2
@@ -346,7 +346,7 @@ rare, but it does happen occasionally. Typically, one will see something like:
 In this case the colliding stars are m1=0.66 and m2=0.42. The information about 
 the third star in this binary--single encounter is not stored in the 
 collision.log file. The only way to get information about the third star is to 
-find this binary-single encounter in the **output.binint.log** file (can be 
+find this binary-single encounter in the **initial.binint.log** file (can be 
 identified easily using the encounter time (here t=0.00266) and also 
 cross-checking the id numbers for the two stars listed in the collision file).
 
@@ -357,7 +357,7 @@ Similarly to the binint file, the collision file can be processed using the :ref
         print(collisions[0].__dict__)
 
 
-output.semergedisrupt.log
+initial.semergedisrupt.log
 --------------------------
 
 This file lists all stellar mergers that occur through binary evolution in each simulation. 
@@ -383,23 +383,23 @@ The semergedisrupt file can also be processed using the :ref:`load_interaction_f
 
 .. _escfile:
 
-output.esc.dat
+initial.esc.dat
 ---------------
 
 As the result of dynamical encounters (and other mechanisms such as cluster 
 tidal truncation) single stars and binaries often become unbound from the 
 cluster potential and are ejected from the system. When this happens, the 
-ejection is recorded in **output.esc.dat**. In particular, this ejection 
+ejection is recorded in **initial.esc.dat**. In particular, this ejection 
 process plays an intimate role in the formation of merging BH binaries. If a 
 BH-BH binary is ejected from the cluster with sufficiently small orbital 
 separation it may merge within a Hubble time and be a possible LIGO source. To 
 determine the number of such mergers, calculate the inspiral times for all 
-BH-BH binaries that appear in the **output.esc.dat** file.
+BH-BH binaries that appear in the **initial.esc.dat** file.
 
 
 Parameters with a `_0` (i.e., mass, radius, star type, etc) correspond to the 
 primary star in a binary. There is also the same column for the secondary star 
-with `_0` replaced by `_1` in the **output.esc.dat** file. Parameters without 
+with `_0` replaced by `_1` in the **initial.esc.dat** file. Parameters without 
 indicies indicate single stars.  
 
 ==============================  =====================================================
@@ -440,7 +440,7 @@ indicies indicate single stars.
 ``bacc0``                       Mass accreted to the primary
 ``tacc0``                       Time spent accreting mass to the primary ?
 ``mass0_0``                     Primary initial mass 
-``epoch0``                      ?
+``epoch0``                      
 ``bhspin``                      BH spin (if single)
 ``bhspin1``                     BH spin for primary (if binary)  
 ``ospin``                       Single star spin angular momentum
@@ -449,7 +449,7 @@ indicies indicate single stars.
 ==============================  =====================================================
 
 
-output.morepulsars.dat
+initial.morepulsars.dat
 -----------------------
 
 This files contains detailed information on all neutron stars for each 
@@ -478,7 +478,7 @@ al. 2019, ApJ.
 
 
 
-output.log
+initial.log
 ------------
 
 Each time step, cluster information is printed between two lines of asterisks.
@@ -501,14 +501,14 @@ Below is an exemplary output:
 ``TotalTime``                    Total time
 ``Dt``                           Time step
 ``Etotal``                       Total energy
-``max_r``                        
+``max_r``                        Maximum radius of a star 
 ``N_bound``                      Number of objects bound to the cluster
 ``Rtidal``                       Tidal radius of the cluster
 ``Mtotal``                       Total mass of the cluster
 ``Etotal.P``                     Total potential energy of the cluster
 ``Etotal.K``                     Total kinetic energy of the cluster
 ``VRatio``                       Virial ratio
-``TidalMassLoss``                
+``TidalMassLoss``                Mass lost through the tidal radius
 ``core_radius``                  Core radius 
 ``rho_core``                     Core density
 ``v_core``                       Velocity dispersion in the core 
@@ -548,9 +548,9 @@ List of triples formed dynamically in the cluster as a result of three- and four
 ``min0``                         Mass of inner object `_0` [:math:`M_{\odot}`]
 ``min1``                         Mass of inner object `_1` [:math:`M_{\odot}`]
 ``mout``                         Mass of outer object [:math:`M_{\odot}`]
-``Rin0``                         Radius of inner object `_0`
-``Rin1``                         Radius of inner object `_0`
-``Rout``                         Radius of outer object 
+``Rin0``                         Radius of inner object `_0` [:math:`R_{\odot}`]
+``Rin1``                         Radius of inner object `_1`[:math:`R_{\odot}`]
+``Rout``                         Radius of outer object [:math:`R_{\odot}`]
 ``ain``                          Semi-major axis of inner binary [AU]
 ``aout``                         Semi-major axis of outer binary [AU]
 ``ein``                          Eccentricity of inner binary
@@ -565,118 +565,103 @@ List of triples formed dynamically in the cluster as a result of three- and four
 ``eps_GR``                       GR parameter: Tlk_quad/T_GR
 ==============================  =====================================================
 
-output.lagrad.dat
+initial.lagrad.dat
 -------------------
 
 This file contains the lagrange radii enclosing a given percentage of the cluster's 
 total mass. So for example, the 10% lagrange radii printed in the 
-**output.lagrad.dat** file is the radius at a given time that encloses 10% of 
+**initial.lagrad.dat** file is the radius at a given time that encloses 10% of 
 the mass. The different columns in that file give 0.1%, 5%, 99%, etc. lagrange 
 radii.
 
 initial.v2_rad_lagrad.dat
 -------------------------
 
-This file contains the sum of radial velocity :math:`v_{r}` within Lagrange 
+List of the sum of radial velocity :math:`v_{r}` within Lagrange 
 radii enclosing a given percentage of the cluster's total mass.
 
 initial.v2_tan_lagrad.dat
 -------------------------
 
-This file contains the sum of tangential velocity :math:`v_{t}` within 
+List of the sum of tangential velocity :math:`v_{t}` within 
 Lagrange radii enclosing a given percentage of the cluster's total mass.
 
 
 initial.nostar_lagrad.dat
 ------------------------
 
-This file contains the number of stars within Lagrange radii enclosing a given 
+List of the number of stars within Lagrange radii enclosing a given 
 percentage of the cluster's total mass.
 
 initial.rho_lagrad.dat
 ---------------------
 
-This file contains the density within Lagrange radii enclosing a given 
+List of the density within Lagrange radii enclosing a given 
 percentage of the cluster's total mass.
 
 initial.avemass_lagrad.dat
 --------------------------
 
-This file contains the average mass :math:`<m>` within Lagrange radii 
+List of the average mass :math:`\langle m \rangle` within Lagrange radii 
 enclosing a given percentage of the cluster's total mass in units of solar mass 
 [:math:`M_{\odot}`].
 
 initial.ke_rad_lagrad.dat
 ------------------------
 
-This file contains the total radial kinetic energy :math:`T_{r}` within 
+List of the total radial kinetic energy :math:`T_{r}` within 
 Lagrange radii enclosing a given percentage of the cluster's total mass in code 
 units.
 
 initial.ke_tan_lagrad.dat
 ------------------------
 
-This file contains the total tangenial kinetic energy :math:`T_{t}` within 
+List of the total tangenial kinetic energy :math:`T_{t}` within 
 Lagrange radii enclosing a given percentage of the cluster's total mass in code 
 units.
 
 initial.lagrad0-0.1-1.dat
 -------------------------
 
-This file contains the lagrange radii for the masses in range 0.1 :math:`M_{\odot}` < m < 1 :math:`M_{\odot}`.
+List of the lagrange radii for the masses in range 0.1 :math:`M_{\odot}` < m < 1 :math:`M_{\odot}`.
 
 initial.lagrad1-1-10.dat
 ------------------------
 
-This file contains the lagrange radii for the masses in range 1 :math:`M_{\odot}` < m < 10 :math:`M_{\odot}`.
+List of the lagrange radii for the masses in range 1 :math:`M_{\odot}` < m < 10 :math:`M_{\odot}`.
 
 -------------------------
 
 initial.lagrad2-10-100.dat
 --------------------------
 
-This file contains the lagrange radii for the masses in range 10 :math:`M_{\odot}` < m < 100 :math:`M_{\odot}`.
+List of the lagrange radii for the masses in range 10 :math:`M_{\odot}` < m < 100 :math:`M_{\odot}`.
 
 
 initial.lagrad3-100-1000.dat
 ----------------------------
 
-This file contains the lagrange radii for the masses in range 100 :math:`M_{\odot}` < m < 10000 :math:`M_{\odot}`.
+List of the lagrange radii for the masses in range 100 :math:`M_{\odot}` < m < 10000 :math:`M_{\odot}`.
 
 
 initial.lagrad_10_info.dat
 --------------------------
 
-This file containts dynamical information at 10 lagrange radius.
-
-==============================  =====================================================
-``t``
-``Dt``
-``tcount``
-``N_10``
-``M_10``
-``N_s,10``
-``M_s,10``
-``N_b,10``
-``M_b_10``
-``r_10``
-``rho_10``
-==============================  =====================================================
-
+This file containts dynamical information of the cluster at 10 lagrange radius.
 
 initial.core.dat
 ----------------
 
-TBD
+Information for the core that contains no remnants.
 
 ==============================  =====================================================
-``time``
-``rho_norem``
-``v_rms_norem``
-``rc_norem``
-``r_spitzer_norem``
-``m_ave_norem``
-``n_norem``
+``time``                         Time
+``rho_norem``                    Density of the core
+``v_rms_norem``                  Velocity dispersion of the core
+``rc_norem``                     Core radius
+``r_spitzer_norem``              Spitzer radius 
+``m_ave_norem``                  Average mass within this core radius
+``n_norem``                      
 ``N_norem``
 ``T_rc_norem``
 ==============================  =====================================================
@@ -684,7 +669,7 @@ TBD
 initial.bin.dat
 --------------
 
-TBD
+This file contains information on binaries.
 
 ==============================  =====================================================
 ``t``                           Total time
@@ -693,18 +678,19 @@ TBD
 ``E_b``                         Total energy of binaries
 ``r_h,s``                       Half-mass radius of single objects
 ``r_h,b``                       Half-mass radius of binaries
-``rho_c``                        
-``N_bb``
-``N_bs``
-``f_b,c``
-``f_b``
-``E_bb``
+``rho_c,s``                     Core density for single objects
+``rho_c,b``                     Core density for binaries
+``N_bb``                        Number of binary-binary interactions
+``N_bs``                        Number of binary-single interactions
+``f_b,c``                       Binary fraction in the core
+``f_b``                         Binary fraction
+``E_bb``                         
 ``E_bs``
 ``DE_bb``
 ``DE_bs``
-``N_bc,nb``
-``f_b,c,nb``
-``N_bc``
+``N_bc,nb``                      Number of existing bound binaries in the core
+``f_b,c,nb``                     Fraction of existing bound binaries in the core
+``N_bc``                         Number of all binaries including the escaped and destroyed ones in the core
 ==============================  =====================================================
 
 initial.bhformation.dat
@@ -729,7 +715,7 @@ This file contains information about newly formed BHs.
 initial.3bb.log
 ---------------
 
-TBD
+This file contains information of three body binaries (triples).
 
 ==============================  =====================================================
 ``time``                         Time
@@ -742,27 +728,27 @@ TBD
 ``m1``                           Mass of object `_1`
 ``m2``                           Mass of object `_2`
 ``m3``                           Mass of object `_3`
-``ave_local_mass``
-``n_local``
-``sigma_local``
-``eta``
-``Eb``
-``ecc``                         Eccentricty
-``a``                           Semi-major axis [AU]
-``r_peri``                      Pericenter distance [AU]
-``r(bin)``
-``r(single)``
-``vr(bin)``                     Radial velocity of binary
-``vt(bin)``                     Tangential velocity of binary
-``vr(single)``                  Radial velocity of single object
-``vt(single)``
-``phi(bin)``
-``phi(single)``
-``delta_PE``
-``delta_KE``
-``delta_E(interaction)``
-``delta_E(cumulative)``
-``N_3bb``
+``ave_local_mass``               Average local mass
+``n_local``                      Local number density
+``sigma_local``                  The local 3D velocity dispersion
+``eta``                          Hardness of the inner binary
+``Eb``                           Binding energy of the inner binary
+``ecc``                          Eccentricty
+``a``                            Semi-major axis [AU]
+``r_peri``                       Pericenter distance [AU]
+``r(bin)``                       Radial distance of the binary
+``r(single)``                    Radial distance of the single object
+``vr(bin)``                      Radial velocity of binary
+``vt(bin)``                      Tangential velocity of binary
+``vr(single)``                   Radial velocity of single object
+``vt(single)``                   Tangential velocity of single object
+``phi(bin)``                     Potential energy of the binary
+``phi(single)``                  Potential energy of the single object
+``delta_PE``                     Change of the potential energy 
+``delta_KE``                     Change of the kinetic energy 
+``delta_E(interaction)``         Change of the total energy per interaction
+``delta_E(cumulative)``          Change of the total energy for all 3-body interactions         
+``N_3bb``                        The number of triples formed
 ==============================  =====================================================
 
 
@@ -771,44 +757,46 @@ initial.3bbprobability.log
 Average rate and probability of three-body binary formation in the timestep calculated from the innermost 300 triplets of single stars considered for three-body binary formation.
 
 ==============================  =====================================================
-``time``
-``dt``
-``dt*N/log(gamma*N)``
+``time``                         Time
+``dt``                           Time step
+``dt*N/log(gamma*N)``            
 ``Rate_3bb``
 ``P_3bb``                        Probability of binary formation
-``r``
+``r``                             
 ==============================  =====================================================
 
 
-output.relaxation.dat
+initial.relaxation.dat
 ----------------------
 
 TBD
 
 ==============================  =====================================================
-``time``                           
-``thetase>1.5708:f``
+``time``                          Time
+``thetase>1.5708:f`` 
 ``q``
 ``<M>``
 ``<r>``
 ==============================  =====================================================
 
-output.lightcollision.log
+initial.lightcollision.log
 ---------------------------
 
-TBD
+List of stars that fail to form triples.
 
 ==============================  =====================================================
-``time``                          Time
-``k``
-``id``                            ID number
-``m``                             Mass
-``type``
-``rad``
-``Eb``
-``ecc``                            Eccentricity
-``a``			                       Semi-major axis [AU]
-``rp``                             [AU]
+``time``                            Time
+``k1``                              Variable to store most massive star index
+``k2``                              Second most massive star index
+``k3``                              Least massive star index
+``id``                              ID number
+``m``                               Mass
+``type``                            Stellar type
+``rad``                             Stellar radius
+``Eb``                              Binding energy
+``ecc``                             Eccentricity
+``a``			                        Semi-major axis [AU]
+``rp``                              m1 * m2 * madhoc / (eta * sqr(sigma_local)) [AU]
 ==============================  =====================================================
 
 
