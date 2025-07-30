@@ -704,11 +704,20 @@ void PrintParaFileOutput(void)
 	 if(WRITE_PULSAR_INFO)
 		 mpi_para_file_write(mpi_pulsarfile_wrbuf, &mpi_pulsarfile_len, &mpi_pulsarfile_ofst_total, &mpi_pulsarfile);
 
-/* Shi */
+/* CSY */
     if (WRITE_MOREPULSAR_INFO)
         mpi_para_file_write(mpi_morepulsarfile_wrbuf, &mpi_morepulsarfile_len, &mpi_morepulsarfile_ofst_total, &mpi_morepulsarfile);
+        mpi_para_file_write(mpi_newnsfile_wrbuf, &mpi_newnsfile_len, &mpi_newnsfile_ofst_total, &mpi_newnsfile);
 
-    /* Meagan's 3bb files */
+    if (TDE_SPINUP){
+        mpi_para_file_write(mpi_tdefile_wrbuf, &mpi_tdefile_len, &mpi_tdefile_ofst_total, &mpi_tdefile);
+    }
+
+/*Elena  */ 
+    if (WRITE_MORECOLL_INFO){
+        mpi_para_file_write(mpi_morecollfile_wrbuf, &mpi_morecollfile_len, &mpi_morecollfile_ofst_total, &mpi_morecollfile);  
+    }
+/* Meagan's 3bb files */
     if (WRITE_BH_INFO){
         mpi_para_file_write(mpi_newbhfile_wrbuf, &mpi_newbhfile_len, &mpi_newbhfile_ofst_total, &mpi_newbhfile);
         mpi_para_file_write(mpi_bhmergerfile_wrbuf, &mpi_bhmergerfile_len, &mpi_bhmergerfile_ofst_total, &mpi_bhmergerfile);
@@ -1167,10 +1176,22 @@ if(myid==0) {
 				PRINT_PARSED(PARAMDOC_TIDAL_CAPTURE);
 				sscanf(values, "%ld", &TIDAL_CAPTURE);
 				parsed.TIDAL_CAPTURE = 1;
-			} else if (strcmp(parameter_name, "BHNS_TDE") == 0) {
-                                PRINT_PARSED(PARAMDOC_BHNS_TDE);
-                                sscanf(values, "%i", &BHNS_TDE);
-                                parsed.BHNS_TDE = 1;
+			} else if (strcmp(parameter_name, "CO_TDE") == 0) {
+                                PRINT_PARSED(PARAMDOC_CO_TDE);
+                                sscanf(values, "%i", &CO_TDE);
+                                parsed.CO_TDE = 1;
+                        } else if (strcmp(parameter_name, "WD_TC") == 0) {
+                                PRINT_PARSED(PARAMDOC_WD_TC);
+                                sscanf(values, "%lf", &WD_TC);
+                                parsed.WD_TC = 1;
+                        } else if (strcmp(parameter_name, "TDE_SPINUP") == 0) {
+                                PRINT_PARSED(PARAMDOC_TDE_SPINUP);
+                                sscanf(values, "%i", &TDE_SPINUP);
+                                parsed.TDE_SPINUP = 1;
+                        } else if (strcmp(parameter_name, "S_TDE") == 0) {
+                                PRINT_PARSED(PARAMDOC_S_TDE);
+                                sscanf(values, "%lf", &S_TDE);
+                                parsed.S_TDE = 1;
 			} else if (strcmp(parameter_name, "BH_CAPTURE") == 0) {
 				PRINT_PARSED(PARAMDOC_BH_CAPTURE);
 				sscanf(values, "%ld", &BH_CAPTURE);
@@ -1336,6 +1357,10 @@ if(myid==0) {
                                 PRINT_PARSED(PARAMDOC_WRITE_MOREPULSAR_INFO);
                                 sscanf(values, "%i", &WRITE_MOREPULSAR_INFO);
                                 parsed.WRITE_MOREPULSAR_INFO = 1;
+                        } else if (strcmp(parameter_name, "WRITE_MORECOLL_INFO")== 0) {
+                                PRINT_PARSED(PARAMDOC_WRITE_MORECOLL_INFO);
+                                sscanf(values, "%i", &WRITE_MORECOLL_INFO);
+                                parsed.WRITE_MORECOLL_INFO = 1;
 			} else if (strcmp(parameter_name, "CALCULATE10")== 0) {
 				PRINT_PARSED(PARAMDOC_CALCULATE10);
 				sscanf(values, "%i", &CALCULATE10);
@@ -1369,6 +1394,10 @@ if(myid==0) {
                                 PRINT_PARSED(PARAMDOC_BSE_PTS3);
                                 sscanf(values, "%lf", &BSE_PTS3);
                                 parsed.BSE_PTS3 = 1;
+			} else if (strcmp(parameter_name, "PTS1_HIGHMASS_CUTOFF")== 0) {
+                                PRINT_PARSED(PARAMDOC_BSE_PTS1_HIGHMASS_CUTOFF);
+                                sscanf(values, "%lf", &BSE_PTS1_HIGHMASS_CUTOFF);
+                                parsed.BSE_PTS1_HIGHMASS_CUTOFF = 1;	
 			} else if (strcmp(parameter_name, "WINDFLAG")==0) {
 				PRINT_PARSED(PARAMDOC_BSE_WINDFLAG);
 				sscanf(values, "%d", &BSE_WINDFLAG);
@@ -1441,6 +1470,10 @@ if(myid==0) {
                                 PRINT_PARSED(PARAMDOC_BSE_SIGMA);
                                 sscanf(values, "%lf", &BSE_SIGMA);
                                 parsed.BSE_SIGMA = 1;
+                        } else if (strcmp(parameter_name, "RTMSFLAG")== 0) {
+                                  PRINT_PARSED(PARAMDOC_BSE_RTMSFLAG);
+                                  sscanf(values, "%i", &BSE_RTMSFLAG);
+                                  parsed.BSE_RTMSFLAG = 1;
                         } else if (strcmp(parameter_name, "BHFLAG")== 0) {
                                 PRINT_PARSED(PARAMDOC_BSE_BHFLAG);
                                 sscanf(values, "%i", &BSE_BHFLAG);
@@ -1521,6 +1554,10 @@ if(myid==0) {
                                 PRINT_PARSED(PARAMDOC_BSE_MXNS);
                                 sscanf(values, "%lf", &BSE_MXNS);
                                 parsed.BSE_MXNS = 1;
+                        } else if (strcmp(parameter_name, "WD_MASS_LIM")== 0) {
+                                PRINT_PARSED(PARAMDOC_BSE_WD_MASS_LIM);
+                                sscanf(values, "%i", &BSE_WD_MASS_LIM);
+                                parsed.BSE_WD_MASS_LIM = 1;
                         } else if (strcmp(parameter_name, "BHSPINMAG")== 0) {
                                 PRINT_PARSED(PARAMDOC_BSE_BHSPINMAG);
                                 sscanf(values, "%lf", &BSE_BHSPINMAG);
@@ -1639,12 +1676,16 @@ if(myid==0) {
     CHECK_PARSED(WRITE_EXTRA_CORE_INFO, 0, PARAMDOC_WRITE_EXTRA_CORE_INFO);
     CHECK_PARSED(WRITE_PULSAR_INFO, 0, PARAMDOC_WRITE_PULSAR_INFO);
     CHECK_PARSED(WRITE_MOREPULSAR_INFO, 0, PARAMDOC_WRITE_MOREPULSAR_INFO);
+    CHECK_PARSED(WRITE_MORECOLL_INFO, 0, PARAMDOC_WRITE_MORECOLL_INFO);
 	CHECK_PARSED(CALCULATE10, 0, PARAMDOC_CALCULATE10);
 	CHECK_PARSED(WIND_FACTOR, 1.0, PARAMDOC_WIND_FACTOR);
 	CHECK_PARSED(TIDAL_TREATMENT, 0, PARAMDOC_TIDAL_TREATMENT);
 	CHECK_PARSED(SS_COLLISION, 0, PARAMDOC_SS_COLLISION);
 	CHECK_PARSED(TIDAL_CAPTURE, 0, PARAMDOC_TIDAL_CAPTURE);
-	CHECK_PARSED(BHNS_TDE, 0, PARAMDOC_BHNS_TDE);
+	CHECK_PARSED(CO_TDE, 0, PARAMDOC_CO_TDE);
+        CHECK_PARSED(WD_TC, 0, PARAMDOC_WD_TC);
+        CHECK_PARSED(TDE_SPINUP, 0, PARAMDOC_TDE_SPINUP);
+        CHECK_PARSED(S_TDE, 0.2, PARAMDOC_S_TDE);
 	CHECK_PARSED(BH_CAPTURE, 0, PARAMDOC_BH_CAPTURE);
         CHECK_PARSED(TC_POLYTROPE, 0, PARAMDOC_TC_POLYTROPE);
         CHECK_PARSED(TC_FACTOR, 1.0, PARAMDOC_TC_FACTOR);
@@ -1724,6 +1765,9 @@ if(myid==0) {
         CHECK_PARSED(BSE_PTS2, 0.01, PARAMDOC_BSE_PTS2);
         //                 pts3 - HG, HeMS            (default=0.02)
         CHECK_PARSED(BSE_PTS3, 0.02, PARAMDOC_BSE_PTS3);
+
+	// For any stars with ZAMS masses above PTS1_HIGHMASS_CUTOFF, decrease PTS1 by 10x
+        CHECK_PARSED(BSE_PTS1_HIGHMASS_CUTOFF, 5, PARAMDOC_BSE_PTS1_HIGHMASS_CUTOFF);
 
         // windflag sets the wind prescription
         // windflag=0: stock BSE// windflag=1: StarTrack 2008
@@ -1825,6 +1869,13 @@ if(myid==0) {
         // default=265.0
         CHECK_PARSED(BSE_SIGMA, 265.0, PARAMDOC_BSE_SIGMA);
 
+        // rtmsflag = 0 -> uses the sse rtms for M < 200 Msun and extrapolation for z < 0.0008 and M > 200 Msun.
+        // rtmsflag = 1 -> interpolates the rtms from Boost tracks (Szécsi et al. (2022)). Extrapolation is used after M > 575 Msun.
+        // rtmsflag = 2 -> uses the best-fit power law for rtms vs stellar mass from BPASSv2.2 tracks (Stanway & Eldridge (2018)).
+        //                 rtms data for BPASS tracks is available only till 300 Msun and beyond that we follow the fitted power law profile.
+        // default=0
+        CHECK_PARSED(BSE_RTMSFLAG, 0, PARAMDOC_BSE_RTMSFLAG);
+
         // bhflag != 0 allows velocity kick at BH formation
         // bhflag=0: no BH kicks// bhflag=1: fallback-modulated kicks
         // bhflag=2: mass-weighted (proportional) kicks// bhflag=3: full NS kicks
@@ -1902,6 +1953,11 @@ if(myid==0) {
         // mxns sets the maximum NS mass
         // default=3.0
         CHECK_PARSED(BSE_MXNS, 3.00, PARAMDOC_BSE_MXNS);
+
+        //wd_mass_lim limits the maximum remnant WD mass to the chandrasekhar mass during mic
+        //if wd_mass_lim=0, remnant from mic is not limited by Mch
+        //default=1
+        CHECK_PARSED(BSE_WD_MASS_LIM, 1, PARAMDOC_BSE_WD_MASS_LIM);
 
         // bhspinflag uses different prescriptions for BH spin after formation 
         // bhspinflag=0// sets all BH spins to bhspinmag
@@ -2410,16 +2466,34 @@ MPI: In the parallel version, IO is done in the following way. Some files requir
 			MPI_File_set_size(mpi_pulsarfile, 0);
 	}
 
-    /* Shi */
+    /* CSY */
     if (WRITE_MOREPULSAR_INFO){
         sprintf(outfile, "%s.morepulsars.dat", outprefix);
         MPI_File_open(MPI_COMM_WORLD, outfile, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &mpi_morepulsarfile);
         if(RESTART_TCOUNT <= 0)
 		MPI_File_set_size(mpi_morepulsarfile, 0);
+
+        sprintf(outfile, "%s.nsformation.dat", outprefix);
+        MPI_File_open(MPI_COMM_WORLD, outfile, MPI_MODE_RESTART, MPI_INFO_NULL, &mpi_newnsfile);
+        if(RESTART_TCOUNT <= 0)
+                MPI_File_set_size(mpi_newnsfile, 0);
     }
 
+    if (TDE_SPINUP){
+        sprintf(outfile, "%s.tde.log", outprefix);
+        MPI_File_open(MPI_COMM_WORLD, outfile, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &mpi_tdefile);
+        if(RESTART_TCOUNT <= 0)
+            MPI_File_set_size(mpi_tdefile, 0);
+    }
 
-	//MPI: Headers are written out only by the root node.
+    /* Elena */
+    if (WRITE_MORECOLL_INFO){
+        sprintf(outfile, "%s.morecoll.dat", outprefix);
+        MPI_File_open(MPI_COMM_WORLD, outfile, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &mpi_morecollfile);
+        if(RESTART_TCOUNT <= 0)
+        	MPI_File_set_size(mpi_morecollfile, 0);
+    }	
+//MPI: Headers are written out only by the root node.
    // print header
     if(RESTART_TCOUNT <= 0){
 		pararootfprintf(escfile, "#1:tcount #2:t #3:m[MSUN] #4:r #5:vr #6:vt #7:r_peri #8:r_apo #9:Rtidal #10:phi_rtidal #11:phi_zero #12:E #13:J #14:id #15:binflag #16:m0[MSUN] #17:m1[MSUN] #18:id0 #19:id1 #20:a #21:e #22:startype #23:bin_startype0 #24:bin_startype1 #25:rad0 #26:rad1 #27:tb #28:lum0 #29:lum1 #30:massc0 #31:massc1 #32:radc0 #33:radc1 #34:menv0 #35:menv1 #36:renv0 #37:renv1 #38:tms0 #39:tms1 #40:dmdt0 #41:dmdt1 #42:radrol0 #43:radrol1 #44:ospin0 #45:ospin1 #46:B0 #47:B1 #48:formation0 #49:formation1 #50:bacc0 #51:bacc1 #52:tacc0 $53:tacc1 #54:mass0_0 #55:mass0_1 #56:epoch0 #57:epoch1 #58:bhspin #59:bhspin1 #60:bhspin2 #61:ospin #62:B #63:formation\n");
@@ -2454,18 +2528,22 @@ MPI: In the parallel version, IO is done in the following way. Some files requir
 		// print header
 		if (WRITE_BH_INFO)
 			pararootfprintf(newbhfile,"#1:time #2:r #3.binary? #4:ID #5:zams_m #6:m_progenitor #7:bh mass #8:bh_spin #9:birth-kick(km/s) #10-25:vsarray\n");
-			pararootfprintf(bhmergerfile,"#1:time #2:type #3.r #4:id1 #5:id2 #6:m1[MSUN] #7:m2[MSUN] #8:spin1 #9:spin2 #10:m_final[MSUN] #11:spin_final #12:vkick[km/s] #13:v_esc[km/s] #14:a_final[AU] #15:e_final #16:a_50M[AU] #17:e_50 #18:a_100M[AU] #19:e_100M #20:a_500M[AU] #21:e_500M\n");
+			pararootfprintf(bhmergerfile,"#1:time #2:type #3.r #4:id1 #5:id2 #6:m1[MSUN] #7:m2[MSUN] #8:spin1 #9:spin2 #10:final_id #11:m_final[MSUN] #12:spin_final #13:vkick[km/s] #14:v_esc[km/s] #15:a_final[AU] #16:e_final #17:a_50M[AU] #18:e_50 #19:a_100M[AU] #20:e_100M #21:a_500M[AU] #22:e_500M\n");
 			pararootfprintf(bhmergerfile,"#NOTE: if repeated mergers occur in fewbody (binary-single or binary-binary), the initial masses will be wrong; check collision.log\n");
 	//"#1:tcount  #2:TotalTime  #3:bh  #4:bh_single  #5:bh_binary  #6:bh-bh  #7:bh-ns  #8:bh-wd  #9:bh-star  #10:bh-nonbh  #11:fb_bh  #12:bh_tot  #13:bh_single_tot  #14:bh_binary_tot  #15:bh-bh_tot  #16:bh-ns_tot  #17:bh-wd_tot  #18:bh-star_tot  #19:bh-nonbh_tot  #20:fb_bh_tot\n");
 
 		/* print header */
 		if(WRITE_PULSAR_INFO)
 			pararootfprintf(pulsarfile, "tcount    TotalTime    Star_id      Rperi    Rapo    R     VR    VT    PHI    PHIr0    PHIrt    kick    Binary_id1    Binary_id2    kw2     P     B    formation     bacc    tacc    B0   TB     M2    M1     e     R2/RL2     dm1/dt   \n");
-                /* print header */ //Shi
-                if (WRITE_MOREPULSAR_INFO)
+                /* print header */ //CSY
+                if (WRITE_MOREPULSAR_INFO) {
                		pararootfprintf(morepulsarfile,"#1:tcount #2:TotalTime #3:binflag #4:id0 #5:id1 #6:m0[MSUN] #7:m1[MSUN] #8:B0[G] #9:B1[G] #10:P0[sec] #11:P1[sec] #12:startype0 #13:startype1 #14:a[AU] #15:ecc #16:radrol0 #17:radrol1 #18:dmdt0 #19:dmdt1 #20:r #21:vr #22:vt #23:bacc0 #24:bacc1 #25:tacc0 #26:tacc1 #27:formation0 #28:formation1\n");
-
-	} /*if(RESTART_TCOUNT == 0)*/
+                        pararootfprintf(newnsfile,"#1:time #2:r #3.binary? #4:ID #5:zams_m #6:m_progenitor #7:ns_mass #8:ns_formation #9:birth-kick(km/s) #10:kprev\n");
+                }
+                /* print header */ //Elena
+                if (WRITE_MORECOLL_INFO)
+                        pararootfprintf(morecollfile,"#1:TotalTime #2:collision-type #3:id0 #4:id1 #5:m0[MSUN] #6:m1[MSUN] #7:rad1[RSUN] #8:rad2[RSUN] #9:rho0_c[MSUN/RSUN^3] #10:rho1_c[MSUN/RSUN^3] #11:rho0_env[MSUN/RSUN^3] #12:rho1_env[MSUN/RSUN^3] #13:kstar0 #14:kstar1 #15:idr #16:mr[MSUN] #17:radr[RSUN] #18:rhor_c[MSUN/RSUN^3] #19:rhor_env[MSUN/RSUN^3] #20:kstar, #21:vinf[km/s], #22:rperi\n");
+	}/*if(RESTART_TCOUNT == 0)*/
 
 }
 
@@ -2545,11 +2623,20 @@ void close_node_buffers(void)
 		 fclose(pulsarfile);
 	 }
 
-    //Shi
+    //CSY
     if (WRITE_MOREPULSAR_INFO){
     	fclose(morepulsarfile);
+        fclose(newnsfile);
     }
+    if (TDE_SPINUP){
+        fclose(tdefile);
+    }
+    //Elena 
+    if (WRITE_MORECOLL_INFO){
+        fclose(morecollfile);
+    }   
 }
+
 
 /**
 * @brief Closes the MPI file pointers - of files which require writing only by the all nodes.
@@ -2583,11 +2670,19 @@ void mpi_close_node_buffers(void)
 		 MPI_File_close(&mpi_pulsarfile);
 	 }
 
-    //Shi
+    //CSY
     if (WRITE_MOREPULSAR_INFO){
     	MPI_File_close(&mpi_morepulsarfile);
+        MPI_File_close(&mpi_newnsfile);
     }
-
+    if (TDE_SPINUP){
+        MPI_File_close(&mpi_tdefile);
+    }
+   
+    //Elena
+    if (WRITE_MORECOLL_INFO){
+        MPI_File_close(&mpi_morecollfile);
+                }
 }
 
 /**
@@ -2767,7 +2862,7 @@ void parse_snapshot_windows(char *param_string) {
   snapshot_window_count= 0;
   snapshot_windows= NULL;
   cur_wstring= param_string;
-  while ((cur_window = strtok_r(cur_wstring,";", &intern_window))!= NULL) {
+  while ((cur_window = strtok_r(cur_wstring,":", &intern_window))!= NULL) {
     snapshot_window_count++;
     snapshot_windows = (double *) realloc(snapshot_windows, 3*snapshot_window_count*sizeof(double));
     cur_wstring= NULL;
@@ -3083,7 +3178,12 @@ void write_snapshot(char *filename, int bh_only, char *tablename) {
 						NRECORDS++;
 				}
 
-                        Snapshot all_objects[NRECORDS];
+                        //Snapshot all_objects[NRECORDS];
+                        Snapshot* all_objects = malloc(NRECORDS * sizeof(Snapshot));
+                        if (all_objects == NULL) {
+                            eprintf("Failed to allocate memory for %ld snapshot objects\n", NRECORDS);
+                            exit_cleanly(-1,__FUNCTION__);
+                        }
                         for (i=1; i<=clus.N_MAX_NEW; i++) {
                                 long g_i = get_global_idx(i);
                                 m = star_m[g_i];
@@ -3236,9 +3336,10 @@ void write_snapshot(char *filename, int bh_only, char *tablename) {
                         }
                         else{
                             snapfile_hdf5 = H5Fopen(filename, H5F_ACC_RDWR, H5P_DEFAULT);
-                            H5TBappend_records(snapfile_hdf5, tablename, NRECORDS, dst_size, dst_offset, dst_sizes, &all_objects);
+                            H5TBappend_records(snapfile_hdf5, tablename, NRECORDS, dst_size, dst_offset, dst_sizes, all_objects);
                             H5Fclose( snapfile_hdf5 );
                         }
+            free(all_objects);
 		}
 		MPI_Barrier(MPI_COMM_WORLD);
 	}
@@ -3562,11 +3663,13 @@ typedef struct{
     long long s_mpi_binintfile_len;
     long long s_mpi_collisionfile_len;
     long long s_mpi_tidalcapturefile_len;
+    long long s_mpi_tdefile_len;
     long long s_mpi_semergedisruptfile_len;
     long long s_mpi_removestarfile_len;
     long long s_mpi_relaxationfile_len;
     long long s_mpi_pulsarfile_len;
     long long s_mpi_morepulsarfile_len;
+    long long s_mpi_morecollfile_len;
     long long s_mpi_triplefile_len;
     long long s_mpi_bhmergerfile_len;
     long long s_mpi_logfile_ofst_total;
@@ -3575,11 +3678,13 @@ typedef struct{
     long long s_mpi_binintfile_ofst_total;
     long long s_mpi_collisionfile_ofst_total;
     long long s_mpi_tidalcapturefile_ofst_total;
+    long long s_mpi_tdefile_ofst_total;
     long long s_mpi_semergedisruptfile_ofst_total;
     long long s_mpi_removestarfile_ofst_total;
     long long s_mpi_relaxationfile_ofst_total;
     long long s_mpi_pulsarfile_ofst_total;
     long long s_mpi_morepulsarfile_ofst_total;
+    long long s_mpi_morecollfile_ofst_total;
     long long s_mpi_triplefile_ofst_total;
     long long s_mpi_bhmergerfile_ofst_total;
 
@@ -3600,6 +3705,7 @@ typedef struct{
     double s_cenma_m;
     double s_cenma_m_new;
     double s_cenma_e;
+    double s_cenma_e_new;
 } restart_struct_t;
 
 void save_global_vars(restart_struct_t *rest){
@@ -3616,11 +3722,13 @@ void save_global_vars(restart_struct_t *rest){
 	rest->s_mpi_binintfile_len                 =mpi_binintfile_len;
 	rest->s_mpi_collisionfile_len              =mpi_collisionfile_len;
 	rest->s_mpi_tidalcapturefile_len           =mpi_tidalcapturefile_len;
+        rest->s_mpi_tdefile_len                    =mpi_tdefile_len;
 	rest->s_mpi_semergedisruptfile_len         =mpi_semergedisruptfile_len;
 	rest->s_mpi_removestarfile_len             =mpi_removestarfile_len;
 	rest->s_mpi_relaxationfile_len             =mpi_relaxationfile_len;
 	rest->s_mpi_pulsarfile_len                 =mpi_pulsarfile_len;
         rest->s_mpi_morepulsarfile_len             =mpi_morepulsarfile_len;
+        rest->s_mpi_morecollfile_len               =mpi_morecollfile_len;        
         rest->s_mpi_triplefile_len                 =mpi_triplefile_len;
 	rest->s_mpi_bhmergerfile_len               =mpi_bhmergerfile_len;
 	rest->s_mpi_logfile_ofst_total             =mpi_logfile_ofst_total;
@@ -3629,11 +3737,13 @@ void save_global_vars(restart_struct_t *rest){
 	rest->s_mpi_binintfile_ofst_total          =mpi_binintfile_ofst_total;
 	rest->s_mpi_collisionfile_ofst_total       =mpi_collisionfile_ofst_total;
 	rest->s_mpi_tidalcapturefile_ofst_total    =mpi_tidalcapturefile_ofst_total;
+        rest->s_mpi_tdefile_ofst_total             =mpi_tdefile_ofst_total;
 	rest->s_mpi_semergedisruptfile_ofst_total  =mpi_semergedisruptfile_ofst_total;
 	rest->s_mpi_removestarfile_ofst_total      =mpi_removestarfile_ofst_total;
 	rest->s_mpi_relaxationfile_ofst_total      =mpi_relaxationfile_ofst_total;
 	rest->s_mpi_pulsarfile_ofst_total          =mpi_pulsarfile_ofst_total;
         rest->s_mpi_morepulsarfile_ofst_total      =mpi_morepulsarfile_ofst_total;
+        rest->s_mpi_morecollfile_len               =mpi_morecollfile_len;        
         rest->s_mpi_triplefile_ofst_total          =mpi_triplefile_ofst_total;
 	rest->s_mpi_bhmergerfile_ofst_total        =mpi_bhmergerfile_ofst_total;
 
@@ -3654,6 +3764,7 @@ void save_global_vars(restart_struct_t *rest){
 	rest->s_cenma_m                            =cenma.m;                 
 	rest->s_cenma_m_new                        =cenma.m_new;                
 	rest->s_cenma_e                            =cenma.E;                       
+	rest->s_cenma_e_new                            =cenma.E_new;                       
 }
 
 void load_global_vars(restart_struct_t *rest){
@@ -3670,11 +3781,13 @@ void load_global_vars(restart_struct_t *rest){
 	mpi_binintfile_len                 =rest->s_mpi_binintfile_len;
 	mpi_collisionfile_len              =rest->s_mpi_collisionfile_len;
 	mpi_tidalcapturefile_len           =rest->s_mpi_tidalcapturefile_len;
+        mpi_tdefile_len                    =rest->s_mpi_tdefile_len;
 	mpi_semergedisruptfile_len         =rest->s_mpi_semergedisruptfile_len;
 	mpi_removestarfile_len             =rest->s_mpi_removestarfile_len;
 	mpi_relaxationfile_len             =rest->s_mpi_relaxationfile_len;
 	mpi_pulsarfile_len                 =rest->s_mpi_pulsarfile_len;
         mpi_morepulsarfile_len             =rest->s_mpi_morepulsarfile_len;
+        mpi_morecollfile_len               =rest->s_mpi_morecollfile_len;
         mpi_triplefile_len                 =rest->s_mpi_triplefile_len;
 	mpi_bhmergerfile_len               =rest->s_mpi_bhmergerfile_len;
 	mpi_logfile_ofst_total             =rest->s_mpi_logfile_ofst_total;
@@ -3683,11 +3796,13 @@ void load_global_vars(restart_struct_t *rest){
 	mpi_binintfile_ofst_total          =rest->s_mpi_binintfile_ofst_total;
 	mpi_collisionfile_ofst_total       =rest->s_mpi_collisionfile_ofst_total;
 	mpi_tidalcapturefile_ofst_total    =rest->s_mpi_tidalcapturefile_ofst_total;
+        mpi_tdefile_ofst_total             =rest->s_mpi_tdefile_ofst_total;
 	mpi_semergedisruptfile_ofst_total  =rest->s_mpi_semergedisruptfile_ofst_total;
 	mpi_removestarfile_ofst_total      =rest->s_mpi_removestarfile_ofst_total;
 	mpi_relaxationfile_ofst_total      =rest->s_mpi_relaxationfile_ofst_total;
 	mpi_pulsarfile_ofst_total          =rest->s_mpi_pulsarfile_ofst_total;
         mpi_morepulsarfile_ofst_total      =rest->s_mpi_morepulsarfile_ofst_total;
+        mpi_morecollfile_ofst_total        =rest->s_mpi_morecollfile_ofst_total;        
         mpi_triplefile_ofst_total          =rest->s_mpi_triplefile_ofst_total;
 	mpi_bhmergerfile_ofst_total        =rest->s_mpi_bhmergerfile_ofst_total;
 
@@ -3708,6 +3823,7 @@ void load_global_vars(restart_struct_t *rest){
 	cenma.m                            =rest->s_cenma_m;
 	cenma.m_new                        =rest->s_cenma_m_new;
 	cenma.E                            =rest->s_cenma_e;
+	cenma.E_new                            =rest->s_cenma_e_new;
 }
 
 void save_restart_file(){
@@ -3854,6 +3970,13 @@ void load_restart_file(){
         }
 	if(WRITE_MOREPULSAR_INFO){
              MPI_File_seek(mpi_morepulsarfile,mpi_morepulsarfile_ofst_total,MPI_SEEK_SET);
+             MPI_File_seek(mpi_newnsfile,mpi_newnsfile_ofst_total,MPI_SEEK_SET);
+        }
+        if (TDE_SPINUP){
+            MPI_File_seek(mpi_tdefile,mpi_tdefile_ofst_total,MPI_SEEK_SET);
+        }
+        if(WRITE_MORECOLL_INFO){
+             MPI_File_seek(mpi_morecollfile,mpi_morecollfile_ofst_total,MPI_SEEK_SET);
         }
     } else{
         mpi_logfile_len=0;
@@ -3861,11 +3984,14 @@ void load_restart_file(){
         mpi_binintfile_len=0;
         mpi_collisionfile_len=0;
         mpi_tidalcapturefile_len=0;
+        mpi_tdefile_len=0;
         mpi_semergedisruptfile_len=0;
         mpi_removestarfile_len=0;
         mpi_relaxationfile_len=0;
         mpi_pulsarfile_len=0;
 	mpi_morepulsarfile_len=0;
+        mpi_newnsfile_len=0;
+	mpi_morecollfile_len=0;
 	mpi_triplefile_len=0;
 	mpi_newbhfile_len=0;
 	mpi_bhmergerfile_len=0;
@@ -3876,11 +4002,14 @@ void load_restart_file(){
         mpi_binintfile_ofst_total=0;
         mpi_collisionfile_ofst_total=0;
         mpi_tidalcapturefile_ofst_total=0;
+        mpi_tdefile_ofst_total=0;
         mpi_semergedisruptfile_ofst_total=0;
         mpi_removestarfile_ofst_total=0;
         mpi_relaxationfile_ofst_total=0;
         mpi_pulsarfile_ofst_total=0;
 	mpi_morepulsarfile_ofst_total=0;
+        mpi_newnsfile_ofst_total=0;
+	mpi_morecollfile_ofst_total=0;
 	mpi_triplefile_ofst_total=0;
 	mpi_newbhfile_ofst_total=0;
 	mpi_bhmergerfile_ofst_total=0;

@@ -571,7 +571,7 @@ void tidally_strip_stars(void) {
 					/* logging */
 					parafprintf(escfile,
 							"%ld %.8g %.8g %.8g %.8g %.8g %.8g %.8g %.8g %.8g %.8g %.8g %.8g %ld ",
-							tcount, TotalTime, m,
+							tcount, TotalTime, m * (units.m / clus.N_STAR) / MSUN,
 							r, star[i].vr, star[i].vt, star[i].r_peri,
 							star[i].r_apo, Rtidal, phi_rtidal, phi_zero, star[i].E, star[i].J, star[i].id);
 
@@ -683,7 +683,7 @@ void remove_star(long j, double phi_rtidal, double phi_zero) {
 
 	/* logging */
 	parafprintf(escfile, "%ld %.8g %.8g ",
-		tcount, TotalTime, m);
+		tcount, TotalTime, m * (units.m / clus.N_STAR) / MSUN);
 	parafprintf(escfile, "%.8g %.8g %.8g ",
 		r, star[j].vr, star[j].vt);
 	parafprintf(escfile, "%.8g %.8g %.8g %.8g %.8g %.8g %.8g %ld ",
@@ -899,6 +899,12 @@ void get_positions_loop(struct get_pos_str *get_pos_dat){
 		/* (r<MINIMUM_R && rmin>0.3*rmax){ */
 		MINIMUM_R = 2.0 * FB_CONST_G * cenma.m * units.mstar / fb_sqr(FB_CONST_C) / units.l;
 		if (0) {
+			// TODO: SMBH: this *should* be redundant with the loss cone physics in bhlosscone.
+			// However, I can imagine cases where the random walk there doesn't catch something 
+			// with a r_peri < r_disrupt.  Double check how often that actually happens.  If it's
+			// a lot, we'll need to think about whether to use this call as well (and whether this
+			// is the best place).  Maybe tune it against TaiChi? 
+			// MPI_ALL_REDUCE will come in another function
 		/* if (r < MINIMUM_R) { */
 			cenma.m += star_m[g_j];
 			cenma.E += (2.0*star_phi[g_j] + star[j].vr * star[j].vr + star[j].vt * star[j].vt) / 

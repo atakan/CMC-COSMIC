@@ -12,6 +12,7 @@
 #include <gsl/gsl_roots.h>
 #include <gsl/gsl_eigen.h>
 #include <gsl/gsl_sort_vector.h>
+#include <gsl/gsl_integration.h>
 #include <string.h>
 #include "../common/fitslib.h"
 #include "../common/taus113-v2.h"
@@ -512,7 +513,7 @@ typedef struct{
 /**
 * @brief original ZAMS mass (at t=0) 
 */
-	double zams_mass;
+	double se_zams_mass;
 /**
 * @brief stellar types (see bse_wrap/bse/bse.f for the list)
 */
@@ -615,6 +616,10 @@ struct CenMa{
 * @brief ?
 */
 	double E;
+/**
+* @brief ?
+*/
+	double E_new;
 };
 
 /**
@@ -730,9 +735,9 @@ typedef struct{
 * @brief output extra snapshotting information during core bounce (0=off, 1=on)
 */
         int SNAPSHOT_CORE_BOUNCE;
-#define PARAMDOC_SNAPSHOT_WINDOWS "Output extra snapshots within time windows. \n#The format is start_w0,step_w0,end_w0;start_w1,step_w1,stop_w1 ... etc." 
+#define PARAMDOC_SNAPSHOT_WINDOWS "Output extra snapshots within time windows. \n#The format is start_w0,step_w0,end_w0:start_w1,step_w1,stop_w1 ... etc." 
 /**
-* @brief Output extra snapshots within time windows. The format is start_w0,step_w0,end_w0;start_w1,step_w1,stop_w1 ... etc.
+* @brief Output extra snapshots within time windows. The format is start_w0,step_w0,end_w0:start_w1,step_w1,stop_w1 ... etc.
 */
         int SNAPSHOT_WINDOWS;
 #define PARAMDOC_SNAPSHOT_WINDOW_UNITS "Units used for time window parameters. Possible choices: Gyr, Trel, and Tcr"
@@ -875,13 +880,13 @@ typedef struct{
 * @brief Allow for the formation of binary black holes from gravitational-wave emission during single-single encounters; SS_COLLISION must be 1
 */
 	int BH_CAPTURE;
-//Shi: simple tidal capture prescription in Kim & Lee 1999 based on polytropic star models.
+//CSY: simple tidal capture prescription in Kim & Lee 1999 based on polytropic star models.
 #define PARAMDOC_TC_POLYTROPE "allow for tidal capture in single-single interactions for non-giant stars (0=off, 1=on)"
 /**
 * @brief allow for tidal capture in single-single interactions for non-giant stars (0=off, 1=on)
 */
         int TC_POLYTROPE;
-//Shi: simple tidal capture prescription for all stars with a radius except Giants.
+//CSY: simple tidal capture prescription for all stars with a radius except Giants.
 #define PARAMDOC_TC_FACTOR "allow for tidal capture (a multiple of the set factor of the pericenter) during single-single collision (1=off, greater than 1 sets different multiplyers)"
 /**
 * @brief allow for tidal capture (a multiple of the set factor of the pericenter) during single-single collision (1=off, greater than 1 sets different multiplyers)
@@ -1076,11 +1081,31 @@ typedef struct{
  * @brief Write out information about neutron stars (0=off, 1=on)
  * */
         int WRITE_MOREPULSAR_INFO;
-#define PARAMDOC_BHNS_TDE "Treat BH(NS)--MS TDEs in TDE vs direct collision limit (1=TDE, 0=coll)"
+#define PARAMDOC_WRITE_MORECOLL_INFO "Write out information about stellar collisions (0=off, 1=on)"
 /**
- * @brief Treat BH(NS)--MS TDEs in TDE vs direct collision limit (1=TDE, 0=coll)
+ * @brief Write out information about stellar collisions(0=off, 1=on)
  * */
-        int BHNS_TDE;
+ 	int WRITE_MORECOLL_INFO;
+#define PARAMDOC_CO_TDE "Treat BH(NS,WD)--MS TDEs in TDE vs direct collision limit (1=TDE, 0=coll)"
+/**
+ * @brief Treat BH(NS,WD)--MS TDEs in TDE vs direct collision limit (1=TDE, 0=coll)
+ * */
+        int CO_TDE;
+#define PARAMDOC_WD_TC "turn on wd-wd tidal capture in single-single and fewbody (0=off, >0=set the capture factor)"
+/**
+* @brief turn on wd-wd tidal capture in single-single and fewbody (0=off,>0=set the capture factor)
+*/
+        int WD_TC;
+#define PARAMDOC_TDE_SPINUP "Turn on NS-MS star TDE mass accretion onto NS (1=on, 0=off)"
+/**
+* @brief Turn on NS-MS star TDE mass accretion onto NS (1=on, 0=off)
+*/
+        int TDE_SPINUP;
+#define PARAMDOC_S_TDE "Mass transport rate for TDE_SPINUP; 0 is the highest. 1 the lowest. (default=0.2)"
+/**
+* @brief Mass transport rate for TDE_SPINUP; 0 is the highest. 1 the lowest. (default=0.2)
+*/
+        int S_TDE;
 #define PARAMDOC_PULSAR_DELTACOUNT "Pulsar output interval in time steps"
 /**
  * @brief Pulsar output interval in time steps
@@ -1123,6 +1148,12 @@ typedef struct{
  * * @brief neta > 0 turns wind mass-loss on, is also the Reimers mass-loss coefficent (neta*4x10^-13: 0.5 normally).
  * */
         int BSE_PTS3;
+#define PARAMDOC_BSE_PTS1_HIGHMASS_CUTOFF "Reduces PTS1 by a factor of 10 for any stars with ZAMS mass below this"
+/**
+ * * @brief Reduces PTS1 by a factor of 10 for any stars with ZAMS mass
+ below this 
+ * */
+        int BSE_PTS1_HIGHMASS_CUTOFF;
 #define PARAMDOC_BSE_EDDLIMFLAG "neta > 0 turns wind mass-loss on, is also the Reimers mass-loss coefficent (neta*4x10^-13: 0.5 normally)."
 /**
  * * @brief neta > 0 turns wind mass-loss on, is also the Reimers mass-loss coefficent (neta*4x10^-13: 0.5 normally).
@@ -1290,6 +1321,11 @@ typedef struct{
 * @brief wdflag > 0 uses modified-Mestel cooling for WDs (1).
 */
 	int BSE_WDFLAG;
+#define PARAMDOC_BSE_RTMSFLAG "rtmsflag > 0 uses data for radius at main sequence turnoff from 1-D stellar evolution codes"
+/**
+* @brief rtmsflag > 0 uses data for radius at main sequence turnoff from 1-D stellar evolution codes".
+*/
+    int BSE_RTMSFLAG;
 #define PARAMDOC_BSE_BHFLAG "bhflag > 0 allows velocity kick at BH formation (1)."
 /**
 * @brief bhflag > 0 allows velocity kick at BH formation (1).
@@ -1345,6 +1381,11 @@ typedef struct{
 * @brief mxns is the maximum NS mass (1.8, remnantflag=0; 3.0, remnantflag=1).
 */
 	int BSE_MXNS;
+#define PARAMDOC_BSE_WD_MASS_LIM "wd_mass_lim limits the maximum WD mass to the Chandrasekhar mass during mic. (0-without limit for mic; 1-with limits for mic)"
+/**
+* @brief wd_mass_lim limits the maximum WD mass to the Chandrasekhar mass during mic. (0-without limit for mic; 1-with limits for mic)
+*/
+        int BSE_WD_MASS_LIM;
 #define PARAMDOC_BSE_BCONST "bconst is the magnetic field decay timescale (-3000, although value and decay rate not really established...)."
 /**
 * @brief bconst is the magnetic field decay timescale (-3000, although value and decay rate not really established...).
@@ -1758,6 +1799,7 @@ void calc_timestep(gsl_rng *rng);
 void energy_conservation1();
 void energy_conservation2();
 void new_orbits_calculate();
+void write_morecoll(long i);
 void toy_rejuvenation();
 void pre_sort_comm();
 void post_sort_comm();
@@ -1803,6 +1845,8 @@ void mpi_close_node_buffers(void);
 void para_file_write(char* wrbuf, long long *len, long long *prev_cum_offset, MPI_File* fh);
 void PrintParaFileOutput(void);
 void close_node_buffers(void);
+void mpiAllocFileBuffers(void);
+void mpiFreeFileBuffers(void);
 
 void PrintLogOutput(void);
 double GetTimeStep(gsl_rng *rng);
@@ -1924,6 +1968,7 @@ void sscollision_do(long k, long kp, double rperi, double w[4], double W, double
 void merge_two_stars(star_t *star1, star_t *star2, star_t *merged_star, double *vs, struct rng_t113_state* s);
 double coll_CE(double Mrg, double Mint, double Mwd, double Rrg, double vinf);
 double coll_CE_twogiant(double M1, double M2, double Mc1, double Mc2, double R1, double R2, double vinf);
+void NS_TDE_spinup(double Mns, double Mstar, double Rstar, double Kstar, double B_old, double ospin_old, double TDE_arr[]);
 
 void print_initial_binaries(void);
 

@@ -108,6 +108,7 @@ void addbin_calc_sigma_r(cmc_fits_data_t *cfd, double *r, double *sigma, double 
 		
 		/* Sigma is the 3D velocity dispersion */
 		Sigma = sqrt(Mv2ave/Mave);
+        fprintf(stderr,"%g %g\n",Sigma,Sigma*(PARSEC*cfd->Rvir/1e5)/(pow(cfd->Rvir * PARSEC, 1.5) / sqrt(G * cfd->Mclus * MSUN)));
 		
 		/* store sigma */
 		r[si] = cfd->obj_r[si];
@@ -164,6 +165,7 @@ void assign_binaries(cmc_fits_data_t *cfd, long Nbin, int limits, double peak_a,
         double BSE_DON_LIM= 0;
         double BSE_ACC_LIM= 0;
         double BSE_SIGMA= 265.0;
+		int BSE_RTMSFLAG= 0;
         int BSE_BHFLAG= 1;
         int BSE_BHMS_COLL_FLAG= 0;
         double BSE_ECSN= 2.5;
@@ -184,6 +186,7 @@ void assign_binaries(cmc_fits_data_t *cfd, long Nbin, int limits, double peak_a,
         double BSE_POLAR_KICK_ANGLE= 90.00;
         int BSE_REMNANTFLAG= 4;
         double BSE_MXNS= 3.00;
+        int BSE_WD_MASS_LIM= 1;
         int BSE_BHSPINFLAG= 0;
         double BSE_WINDFLAG= 3;
         double BSE_EDDLIMFLAG= 0;
@@ -232,6 +235,7 @@ void assign_binaries(cmc_fits_data_t *cfd, long Nbin, int limits, double peak_a,
         bse_set_acc_lim(BSE_ACC_LIM);
 	bse_set_ifflag(BSE_IFFLAG);
 	bse_set_wdflag(BSE_WDFLAG);
+	bse_set_rtmsflag(BSE_RTMSFLAG);
 	bse_set_bhflag(BSE_BHFLAG);
         bse_set_bhms_coll_flag(BSE_BHMS_COLL_FLAG);
 	bse_set_remnantflag(BSE_REMNANTFLAG);
@@ -242,6 +246,7 @@ void assign_binaries(cmc_fits_data_t *cfd, long Nbin, int limits, double peak_a,
 	bse_set_bhspinflag(BSE_BHSPINFLAG);
 	bse_set_bhspinmag(BSE_BHSPINMAG);
 	bse_set_mxns(BSE_MXNS);
+        bse_set_wd_mass_lim(BSE_WD_MASS_LIM);
 	bse_set_bconst(BSE_BCONST);
 	bse_set_CK(BSE_CK);
 	bse_set_rejuv_fac(BSE_REJUV_FAC);
@@ -860,6 +865,7 @@ void assign_binaries(cmc_fits_data_t *cfd, long Nbin, int limits, double peak_a,
 	vcore = 0.0;
 	for (i=1; i<=AVEKERNEL; i++) {
 		vcore += sigma[i];
+        fprintf(stderr,"sigma[%d]=%g\n",i,sigma[i]*(PARSEC*cfd->Rvir/1e5)/(pow(cfd->Rvir * PARSEC, 1.5) / sqrt(G * cfd->Mclus * MSUN)));
 		kTcore += (1.0/3.0) * mave[i] * sigma[i] * sigma[i];
 	}
 	vcore /= AVEKERNEL;
@@ -878,10 +884,10 @@ void assign_binaries(cmc_fits_data_t *cfd, long Nbin, int limits, double peak_a,
 				amin = 5.0 * (cfd->bs_Reff1[i] + cfd->bs_Reff2[i]);
 				W = 4.0 * vcore / sqrt(3.0 * PI);
 				vorb = XHS * W;
-				amax = max_a_hs * cfd->obj_m[i] / (vorb * vorb);
+				amax = max_a_hs * (cfd->bs_m1[i]+cfd->bs_m2[i]) / (vorb * vorb);
+                timeunitcgs = pow(cfd->Rvir * PARSEC, 1.5) / sqrt(G * cfd->Mclus * MSUN);
 				if (amax <= amin && ignoreradii == 0) {
-				  fprintf(stderr, "WARNING: amax <= amin! amax=%g amin=%g M=%g\n", amax, amin, cfd->obj_m[i]*cfd->Mclus);
-				  fprintf(stderr, "WARNING: setting amax = amin\n");
+				  fprintf(stderr, "WARNING: amax <= amin! amax=%g amin=%g vorb = %g M=%g m1=%g m2=%g\n", amax*(PARSEC*cfd->Rvir)/AU, amin*(PARSEC*cfd->Rvir)/AU, vorb*(PARSEC*cfd->Rvir/1e5)/timeunitcgs, cfd->obj_m[i]*cfd->Mclus, cfd->bs_m1[i]*cfd->Mclus,cfd->bs_m2[i]*cfd->Mclus);
 				  amax = amin;
 				}
 				cfd->bs_a[i] = pow(10.0, rng_t113_dbl()*(log10(amax)-log10(amin))+log10(amin));
@@ -1058,7 +1064,7 @@ void assign_binaries(cmc_fits_data_t *cfd, long Nbin, int limits, double peak_a,
 				amin = 5.0 * (cfd->bs_Reff1[i] + cfd->bs_Reff2[i]);
 				W = 4.0 * vcore / sqrt(3.0 * PI);
 				vorb = XHS * W;
-				amax = max_a_hs * cfd->obj_m[i] / (vorb * vorb);
+				amax = max_a_hs * (cfd->bs_m1[i]+cfd->bs_m2[i]) / (vorb * vorb);
 				if (amax <= amin && ignoreradii == 0) {
 				  fprintf(stderr, "WARNING: amax <= amin! amax=%g amin=%g M=%g\n", amax, amin, cfd->obj_m[i]*cfd->Mclus);
 				  fprintf(stderr, "WARNING: setting amax = amin\n");
@@ -1111,7 +1117,7 @@ void assign_binaries(cmc_fits_data_t *cfd, long Nbin, int limits, double peak_a,
 				amin = 5.0 * (cfd->bs_Reff1[i] + cfd->bs_Reff2[i]);
 				W = 4.0 * vcore / sqrt(3.0 * PI);
 				vorb = XHS * W;
-				amax = max_a_hs * cfd->obj_m[i] / (vorb * vorb);
+				amax = max_a_hs * (cfd->bs_m1[i]+cfd->bs_m2[i]) / (vorb * vorb);
 				if (amax <= amin && ignoreradii == 0) {
 				  fprintf(stderr, "WARNING: amax <= amin! amax=%g amin=%g\n", amax, amin);
 				  fprintf(stderr, "WARNING: setting amax = amin\n");

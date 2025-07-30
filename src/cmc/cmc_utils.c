@@ -620,14 +620,14 @@ void ComputeEnergy(void)
 	//MPI: Calculating these variables on each processor
 	for (i=1; i<=mpiEnd-mpiBegin+1; i++) {
 		j = get_global_idx(i);
-		buf_reduce[1] += 0.5 * (sqr(star[i].vr) + sqr(star[i].vt)) * star_m[j] / clus.N_STAR;
-		buf_reduce[2] += star_phi[j] * star_m[j] / clus.N_STAR;
-		buf_reduce[2] += phi0 * cenma.m*madhoc/ clus.N_STAR;
+		buf_reduce[1] += 0.5 * (sqr(star[i].vr) + sqr(star[i].vt)) * star_m[j]*madhoc;
+		buf_reduce[2] += star_phi[j] * star_m[j]*madhoc;
+		buf_reduce[2] += phi0 * cenma.m*madhoc / clus.N_MAX;
 
 		if (star[i].binind == 0) {
 			buf_reduce[3] += star[i].Eint;
 		} else if (binary[star[i].binind].inuse) {
-			buf_reduce[4] += -(binary[star[i].binind].m1/clus.N_STAR) * (binary[star[i].binind].m2/clus.N_STAR) / 
+			buf_reduce[4] += -(binary[star[i].binind].m1*madhoc) * (binary[star[i].binind].m2*madhoc) / 
 				(2.0 * binary[star[i].binind].a);
 			buf_reduce[3] += binary[star[i].binind].Eint1 + binary[star[i].binind].Eint2;
 		}
@@ -646,6 +646,10 @@ void ComputeEnergy(void)
 	Etotal.P = buf_reduce[2];
 	Etotal.Eint = buf_reduce[3];
 	Etotal.Eb = buf_reduce[4];
+
+	//Central BH energy was already communicated in post_sort_comm; add it in here
+	cenma.E += cenma.E_new;
+	cenma.E_new = 0.0;
 
 	Etotal.tot += cenma.E + Eescaped + Ebescaped + Eintescaped;
 
@@ -692,7 +696,8 @@ long potential_calculate(void) {
 	clus.N_MAX = k - 1;
 
 	/* update central BH mass */
-	cenma.m= cenma.m_new;
+	cenma.m += cenma.m_new;
+	cenma.m_new = 0.0;
 
 	/* New total Mass; This IS correct for multiple components */
 	Mtotal = mprev * madhoc + cenma.m * madhoc;	
@@ -926,13 +931,11 @@ void comp_mass_percent(){
 	for (k = 1; k <= clus.N_MAX; k++) {
 		mprev += star_m[k] / clus.N_STAR;
 
-		if (mprev / Mtotal > mass_pc[mcount]) {
-
+		if (mprev > mass_pc[mcount] * Mtotal) {
 			mass_r[mcount] = star_r[k];
 			ave_mass_r[mcount] = mprev/Mtotal/k*initial_total_mass;
 			no_star_r[mcount] = k;
-			densities_r[mcount] = mprev*clus.N_STAR/
-				(4/3*3.1416*pow(star_r[k],3));
+			densities_r[mcount] = mprev / (4.0 / 3.0 * PI * pow(star_r[k],3));
 
 			//MPI: When the condition in the if statement is satisfied, we find which processor k belongs to, and that processor sends its cumulated values to the root since these values are printed out to file only by the root
             int proc_k = findProcForIndex(k);
@@ -1231,7 +1234,7 @@ double compute_tidal_boundary(void){
 }
 
 /**
-* @brief calculate central quantities
+* @brief calculate central quantities: see description in Fregeau & Rasio (2007) based upon Casertano & Hut (1985)
 */
 void central_calculate(void)
 {
@@ -1241,7 +1244,7 @@ void central_calculate(void)
 
 	//MPI: The first part is done on all nodes, since they mostly need only the duplicated arrays. The second part is done on the root node, and broadcasted to all other nodes. Parallelization is mostly trivial and easily understandable from reading the code.
 	/* average over all stars out to half-mass radius */
-	nave = 1;
+	nave = 1; /* compute the index of the object with just beyond the half-mass radius */
 	while (m < 0.5 * Mtotal) {
 		m += star_m[nave] / clus.N_STAR;
 		nave++;
@@ -1256,7 +1259,7 @@ void central_calculate(void)
 	/* allocate array for local density calculations */
 	rhoj = (double *) malloc((nave+1) * sizeof(double));
 
-	/* calculate rhoj's (Casertano & Hut 1985) */
+	/* calculate rhoj's as in Eq. II.2 of Casertano & Hut (1985) */
 	for (i=1; i<=nave; i++) {
 		jmin = MAX(i-J/2, 1);
 		jmax = jmin + J;
@@ -1270,15 +1273,15 @@ void central_calculate(void)
 		rhoj[i] = mrho / Vrj;
 	}
 
-	/* calculate core quantities using density weighted averages (note that in 
-	   Casertano & Hut (1985) only rho and rc are analyzed and tested) */
+	/* calculate core quantities using mass-density-weighted averages; note that in 
+	   Casertano & Hut (1985) only rho and rc are analyzed and tested */
 	rhojsum = 0.0;
 	rhoj2sum = 0.0;
-	rc_nb = 0.0;
-	central.rho = 0.0;
-	central.v_rms = 0.0;
-	central.rc = 0.0;
-	central.m_ave = 0.0;
+	central.rho = 0.0;   /* density-weighted density from Eq. II.5 of Casertano & Hut (1985), with estimator bias correction (see below) */
+	central.v_rms = 0.0; /* root-mean-squared density-weighted velocity */
+	central.rc = 0.0;    /* density-weighted core radius from Eq. II.4 of Casertano & Hut (1985) */
+	rc_nb = 0.0;         /* (density squared)-weighted core radius used in NBODY6, originating from Eq. 5 of McMillan, Hut & Makino (1990) */
+	central.m_ave = 0.0; /* density-weighted average central mass */
 	for (i=1; i<=nave; i++) {
 		rhojsum += rhoj[i];
 		rhoj2sum += sqr(rhoj[i]);
@@ -1318,8 +1321,7 @@ void central_calculate(void)
     timeEndSimple(tmpTimeStart, &t_comm);
 
 	central.rho /= rhojsum;
-	/* correction for inherent bias in estimator */
-	central.rho *= 4.0/5.0;
+	central.rho *= 4.0/5.0; /* correction for inherent bias in estimator, from Eqs. III.3 and V.2 of Casertano & Hut (1985)  */
 	/* and now correct for the fact this estimate of density is systematically smaller than the
 	   theoretical by a factor of about 2 (for a range of King models and for the Plummer model) */
 	central.rho *= 2.0;
@@ -1921,11 +1923,13 @@ void set_global_vars1()
     mpi_binintfile_len=0;
     mpi_collisionfile_len=0;
     mpi_tidalcapturefile_len=0;
+    mpi_tdefile_len=0;
     mpi_semergedisruptfile_len=0;
     mpi_removestarfile_len=0;
     mpi_relaxationfile_len=0;
     mpi_pulsarfile_len=0;
     mpi_morepulsarfile_len=0;
+    mpi_morecollfile_len=0;
     mpi_triplefile_len=0;
 
     mpi_logfile_ofst_total=0;
@@ -1934,11 +1938,13 @@ void set_global_vars1()
     mpi_binintfile_ofst_total=0;
     mpi_collisionfile_ofst_total=0;
     mpi_tidalcapturefile_ofst_total=0;
+    mpi_tdefile_ofst_total=0;
     mpi_semergedisruptfile_ofst_total=0;
     mpi_removestarfile_ofst_total=0;
     mpi_relaxationfile_ofst_total=0;
     mpi_pulsarfile_ofst_total=0;
     mpi_morepulsarfile_ofst_total=0;
+    mpi_morecollfile_ofst_total=0;
     mpi_triplefile_ofst_total=0;
 }
 
@@ -2272,6 +2278,9 @@ void post_sort_comm()
     //MPI_Allgatherv(MPI_IN_PLACE, mpiLen[myid], MPI_DOUBLE, star_m, mpiLen, mpiDisp, MPI_DOUBLE, MPI_COMM_WORLD);
     MPI_Allgatherv(temp_r+1, mpiLen[myid], MPI_DOUBLE, star_r, mpiLen, mpiDisp, MPI_DOUBLE, MPI_COMM_WORLD);
     MPI_Allgatherv(temp_m+1, mpiLen[myid], MPI_DOUBLE, star_m, mpiLen, mpiDisp, MPI_DOUBLE, MPI_COMM_WORLD);
+
+	MPI_Allreduce(MPI_IN_PLACE, &cenma.m_new, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);		
+	MPI_Allreduce(MPI_IN_PLACE, &cenma.E_new, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);		
 
 	free(temp_r);
 	free(temp_m);

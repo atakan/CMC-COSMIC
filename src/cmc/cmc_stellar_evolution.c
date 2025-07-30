@@ -46,6 +46,7 @@ void restart_stellar_evolution(void){
   bse_set_acc_lim(BSE_ACC_LIM);
   bse_set_ifflag(BSE_IFFLAG);
   bse_set_wdflag(BSE_WDFLAG);
+  bse_set_rtmsflag(BSE_RTMSFLAG);
   bse_set_bhflag(BSE_BHFLAG);
   bse_set_grflag(BSE_GRFLAG);
   bse_set_kickflag(BSE_KICKFLAG);
@@ -56,6 +57,7 @@ void restart_stellar_evolution(void){
   bse_set_bhms_coll_flag(BSE_BHMS_COLL_FLAG);
   bse_set_bhspinmag(BSE_BHSPINMAG);
   bse_set_mxns(BSE_MXNS); //3 if remnantflag=1 or 2, 1.8 if remnantflag=0 (see evolv2.f)
+  bse_set_wd_mass_lim(BSE_WD_MASS_LIM);
   bse_set_bconst(BSE_BCONST);
   bse_set_CK(BSE_CK);
   bse_set_rejuv_fac(BSE_REJUV_FAC);
@@ -81,6 +83,9 @@ void restart_stellar_evolution(void){
   /* set parameters relating to metallicity */
   zpars = (double *) malloc(20 * sizeof(double));
   bse_zcnsts(&METALLICITY, zpars);
+
+  /* set the variables for the BCM/BPP arrays */
+  bse_set_bcm_bpp_cols();
 
   /* set collisions matrix */
   bse_instar();
@@ -138,6 +143,7 @@ void stellar_evolution_init(void){
   bse_set_acc_lim(BSE_ACC_LIM);
   bse_set_ifflag(BSE_IFFLAG);
   bse_set_wdflag(BSE_WDFLAG);
+  bse_set_rtmsflag(BSE_RTMSFLAG);
   bse_set_bhflag(BSE_BHFLAG);
   bse_set_grflag(BSE_GRFLAG);
   bse_set_kickflag(BSE_KICKFLAG);
@@ -148,6 +154,7 @@ void stellar_evolution_init(void){
   bse_set_bhms_coll_flag(BSE_BHMS_COLL_FLAG);
   bse_set_bhspinmag(BSE_BHSPINMAG);
   bse_set_mxns(BSE_MXNS); //3 if remnantflag=1 or 2, 1.8 if remnantflag=0 (see evolv2.f)
+  bse_set_wd_mass_lim(BSE_WD_MASS_LIM);
   bse_set_bconst(BSE_BCONST);
   bse_set_CK(BSE_CK);
   bse_set_rejuv_fac(BSE_REJUV_FAC);
@@ -174,16 +181,19 @@ void stellar_evolution_init(void){
   zpars = (double *) malloc(20 * sizeof(double));
   bse_zcnsts(&METALLICITY, zpars);
 
+  /* set the variables for the BCM/BPP arrays */
+  bse_set_bcm_bpp_cols();
+
   /* set collisions matrix */
   bse_instar();
-  dprintf("se_init: %g %g %g %d %g %g %g %d %d %d %d %d %d %g %d %g %g %g %g %g %g\n", BSE_NETA, BSE_BWIND, BSE_HEWIND, BSE_WINDFLAG, BSE_PISN, BSE_ALPHA1, BSE_LAMBDAF, BSE_CEFLAG, BSE_TFLAG, BSE_IFFLAG, BSE_WDFLAG, BSE_BHFLAG, BSE_REMNANTFLAG, BSE_MXNS, BSE_IDUM, BSE_SIGMA, BSE_BHSIGMAFRAC, BSE_BETA, BSE_EDDFAC, BSE_GAMMA, BSE_POLAR_KICK_ANGLE);
+  dprintf("se_init: %g %g %g %d %g %g %g %d %d %d %d %d %d %g %d %g %g %g %g %g %g\n", BSE_NETA, BSE_BWIND, BSE_HEWIND, BSE_WINDFLAG, BSE_PISN, BSE_ALPHA1, BSE_LAMBDAF, BSE_CEFLAG, BSE_TFLAG, BSE_IFFLAG, BSE_WDFLAG, BSE_RTMSFLAG, BSE_BHFLAG, BSE_REMNANTFLAG, BSE_MXNS, BSE_IDUM, BSE_SIGMA, BSE_BHSIGMAFRAC, BSE_BETA, BSE_EDDFAC, BSE_GAMMA, BSE_POLAR_KICK_ANGLE);
 
   for (k=1; k<=mpiEnd-mpiBegin+1; k++) {
     long g_k = get_global_idx(k);
 
     if (star[k].binind == 0) { /* single star */
       star[k].se_mass = star_m[g_k] * units.mstar / MSUN;
-	  star[k].zams_mass = star[k].se_mass;
+	  star[k].se_zams_mass = star[k].se_mass;
       /* setting the type */
       if(star[k].se_mass <= 0.7){
         star[k].se_k = 0;
@@ -364,6 +374,7 @@ void do_stellar_evolution(gsl_rng *rng)
   double M_afterSE, M10_afterSE, M100_afterSE, M1000_afterSE, Mcore_afterSE;
   double r10_beforeSE, r100_beforeSE, r1000_beforeSE, rcore_beforeSE;
   double dM_dt_SE10, dM_dt_SE100, dM_dt_SE1000, dM_dt_SEcore; 
+  double mprev0, mprev1, rprev0, rprev1, zamsprev0, zamsprev1, epochprev0, epochprev1, tbprev;
   struct rng_t113_state temp_state;
   int reduced_timestep=0;
   binary_t tempbinary;
@@ -426,7 +437,7 @@ void do_stellar_evolution(gsl_rng *rng)
 		  /*If we've got a large MS star, we need to reduce the timestep, otherwise
 		   * we miss the transition from MS to HG to giant, and won't start applying
 		   * winds for massive stars at the right time*/
-		  if(star[k].zams_mass > 18){
+		  if((star[k].se_k <= 1 || star[k].se_k == 7) & star[k].se_zams_mass > BSE_PTS1_HIGHMASS_CUTOFF){
 			  bse_set_pts1(BSE_PTS1/10.);
 			  reduced_timestep = 1;
 		  }
@@ -474,7 +485,7 @@ void do_stellar_evolution(gsl_rng *rng)
         /* extract info from scm array */ /* PK looping over a large number anticipating further changes */
 	        i = 1;
 	        j = 1;
-        	while (bse_get_bcm(i,1)>=0.0 && i < 50000) {
+        	while (bse_get_bcm(i,1)>=0.0 && i < BCM_NUM_ROWS) {
           		if(i > 1) {
             			if(bse_get_bcm(i,2) == 13 && bse_get_bcm(i-1,2) < 13){
               				if(bse_get_bcm(i+1,1) >= 0.0){
@@ -489,7 +500,7 @@ void do_stellar_evolution(gsl_rng *rng)
           		i++;
         	}
         	i--;
-        	if(i+1 > 50000){
+        	if(i+1 > BCM_NUM_ROWS){
           		i = 0;
         	}
         	if(i>=1) {
@@ -550,16 +561,23 @@ void do_stellar_evolution(gsl_rng *rng)
 			pulsar_write(k, VKO);
 		}
 
-		//Shi
+		//CSY
 		if(tcount%PULSAR_DELTACOUNT==0){
 			if (WRITE_MOREPULSAR_INFO){
 				write_morepulsar(k);
 			}
 		}
 
+                if (WRITE_MOREPULSAR_INFO) {
+                        if (kprev!=13 && star[k].se_k==13) { // newly formed NS
+                                parafprintf(newnsfile, "%.18g %g 0 %ld %g %g %g %g %g %d", TotalTime, star_r[g_k], star[k].id,star[k].se_zams_mass,star[k].se_mass, star[k].se_mt, star[k].se_scm_formation, VKO, kprev);
+                                parafprintf (newnsfile, "\n");
+                        }
+                }
+
 		if (WRITE_BH_INFO) {
 			if (kprev!=14 && star[k].se_k==14) { // newly formed BH
-				parafprintf(newbhfile, "%.18g %g 0 %ld %g %g %g %g %g", TotalTime, star_r[g_k], star[k].id,star[k].zams_mass,star[k].se_mass, star[k].se_mt, star[k].se_bhspin, VKO);
+				parafprintf(newbhfile, "%.18g %g 0 %ld %g %g %g %g %g", TotalTime, star_r[g_k], star[k].id,star[k].se_zams_mass,star[k].se_mass, star[k].se_mt, star[k].se_bhspin, VKO);
 				for (ii=0; ii<16; ii++){
 					parafprintf (newbhfile, " %g", vs[ii]);
 				}
@@ -581,11 +599,20 @@ void do_stellar_evolution(gsl_rng *rng)
 		/* store previous star types for binary components, before evolving binary */
 		kprev0=binary[kb].bse_kw[0];
 		kprev1=binary[kb].bse_kw[1];
-
+		rprev0=binary[kb].bse_radius[0];
+		rprev1=binary[kb].bse_radius[1];
+		mprev0=binary[kb].bse_mass[0];
+		mprev1=binary[kb].bse_mass[1];
+		zamsprev0=binary[kb].bse_zams_mass[0];
+		zamsprev1=binary[kb].bse_zams_mass[1];
+		epochprev0=binary[kb].bse_epoch[0];
+		epochprev1=binary[kb].bse_epoch[1];
+		tbprev= binary[kb].bse_tb;
+		
 		/*If we've got a large MS star, we need to reduce the timestep, otherwise
 		 * we miss the transition from MS to HG to giant, and won't start applying
 		 * winds for massive stars at the right time*/
-		if(binary[kb].bse_zams_mass[0] > 18 || binary[kb].bse_zams_mass[1] > 18){
+		if(((binary[kb].bse_kw[0] <= 1 || binary[kb].bse_kw[0] == 7) & (binary[kb].bse_zams_mass[0] > BSE_PTS1_HIGHMASS_CUTOFF)) || ((binary[kb].bse_kw[1] <= 1 || binary[kb].bse_kw[1] == 7) & (binary[kb].bse_zams_mass[1] > BSE_PTS1_HIGHMASS_CUTOFF))){
 		    bse_set_pts1(BSE_PTS1/10.);
 		    reduced_timestep = 1;
 		}
@@ -618,10 +645,11 @@ void do_stellar_evolution(gsl_rng *rng)
 		    bse_set_pts1(BSE_PTS1);
 
         if(isnan(binary[kb].bse_radius[0])){
-		printf("id1=%ld id2=%ld\n",binary[kb].id1,binary[kb].id2);
+              printf("id1=%ld id2=%ld\n",binary[kb].id1,binary[kb].id2);
           fprintf(stderr, "An isnan occured for r1 cmc_stellar_evolution.c\n");
           fprintf(stderr, "tphys=%g tphysf=%g kstar1=%d kstar2=%d m1=%g m2=%g r1=%g r2=%g l1=%g l2=%g tb=%g\n", binary[kb].bse_tphys, tphysf, binary[kb].bse_kw[0], binary[kb].bse_kw[1], binary[kb].bse_mass[0], binary[kb].bse_mass[1], binary[kb].bse_radius[0], binary[kb].bse_radius[1], binary[kb].bse_lum[0], binary[kb].bse_lum[1], binary[kb].bse_tb);
           fprintf(stderr, "k= %ld kb=%ld star_id=%ld bin_id1=%ld bin_id2=%ld \n", k, kb, star[k].id, binary[kb].id1, binary[kb].id2);
+          fprintf(stderr, "Before BSE: kprev0 =%d kprev1=%d, m1=%g, m2=%g, zams1=%g, zams2=%g, rad1=%g, rad2=%g, epoch1=%g, epoch2=%g tbprev=%g \n", kprev0, kprev1, mprev0, mprev1, zamsprev0, zamsprev1, rprev0, rprev1, epochprev0, epochprev1, tbprev);
           exit(1);
         } 
         if(isnan(binary[kb].bse_radius[1])){
@@ -649,6 +677,18 @@ void do_stellar_evolution(gsl_rng *rng)
 			parafprintf (newbhfile, "\n");
 		}
 	}
+
+        if (WRITE_MOREPULSAR_INFO) {
+                if (kprev0!=13 && binary[kb].bse_kw[0]==13) { // newly formed NS
+                        parafprintf(newnsfile, "%.18g %g 1 %ld %g %g %g %g %g %d", TotalTime, star_r[g_k], binary[kb].id1, binary[kb].bse_zams_mass[0], binary[kb].bse_mass0[0], binary[kb].bse_mass[0], binary[kb].bse_bcm_formation[0], VKO, kprev0);
+                        parafprintf(newnsfile, "\n");
+                }
+                if (kprev1!=13 && binary[kb].bse_kw[1]==13 && binary[kb].id2 != 0) { // newly formed NS
+                        parafprintf(newnsfile, "%.18g %g 1 %ld %g %g %g %g %g %d", TotalTime, star_r[g_k], binary[kb].id2, binary[kb].bse_zams_mass[1],binary[kb].bse_mass0[1], binary[kb].bse_mass[1], binary[kb].bse_bcm_formation[1],VKO,kprev1);
+                        parafprintf(newnsfile, "\n");
+                }
+        }
+
 	//handle_bse_outcome(k, kb, vs, tphysf, kprev0, kprev1);
       }
     }
@@ -778,11 +818,11 @@ void handle_bse_outcome(long k, long kb, double *vs, double tphysf, int kprev0, 
   /* 5100000 will eventually be a possible max array length... */
   j = 1;
   jj = 1;
-  while (bse_get_bcm(j, 1) >= 0 && j<50000) {
+  while (bse_get_bcm(j, 1) >= 0 && j<BCM_NUM_ROWS) {
     j++;
   }
   j--;
-  if(j+1 > 50000) {
+  if(j+1 > BCM_NUM_ROWS) {
      j = 0;
   }
   if (j >= 1) {
@@ -916,12 +956,12 @@ void handle_bse_outcome(long k, long kb, double *vs, double tphysf, int kprev0, 
     cp_binmemb_to_star(k, 0, knew);
     cp_binmemb_to_star(k, 1, knewp);
     DMse -= (star_m[get_global_idx(knew)] + star_m[get_global_idx(knewp)]) * madhoc;
-
-    parafprintf(semergedisruptfile, "t=%g disruptboth id1=%ld(m1=%g) id2=%ld(m2=%g) (r=%g) type1=%d type2=%d\n",
+    /*Elena: Modifying output */
+    parafprintf(semergedisruptfile, "t=%g disruptboth id1=%ld(m1=%g) id2=%ld(m2=%g) (r=%g) type1=%d type2=%d rad1[RSUN]=%g rad2[RSUN]=%g\n",
       TotalTime,
       star[knew].id, star[knew].se_mt, 
       star[knewp].id, star_m[get_global_idx(knewp)] * units.mstar / FB_CONST_MSUN,
-      star_r[get_global_idx(k)], kprev0, kprev1);
+		star_r[get_global_idx(k)], kprev0, kprev1, binary[kb].rad1 * units.l / RSUN, binary[kb].rad2 * units.l / RSUN);
 
     destroy_obj(k);
     /* in this case vs is relative speed between stars at infinity */
@@ -1037,12 +1077,14 @@ void handle_bse_outcome(long k, long kb, double *vs, double tphysf, int kprev0, 
 	if(kprev0 == 14 && kprev1 == 14)
 		binary_bh_merger(k, kb, knew, kprev0, kprev1, curr_st);
 
-    parafprintf(semergedisruptfile, "t=%g disrupt1 idr=%ld(mr=%g) id1=%ld(m1=%g):id2=%ld(m2=%g) (r=%g) typer=%d type1=%d type2=%d\n",
+    /*Elena: Modifying output */
+    parafprintf(semergedisruptfile, "t=%g disrupt1 idr=%ld(mr=%g) id1=%ld(m1=%g):id2=%ld(m2=%g) (r=%g) typer=%d type1=%d type2=%d radr[RSUN]=%g rad1[RSUN]=%g rad2[RSUN]=%g\n",
       TotalTime,
       star[knew].id, star[knew].se_mt,
       binary[kb].id1, binary[kb].m1 * units.mstar / FB_CONST_MSUN,
       binary[kb].id2, binary[kb].m2 * units.mstar / FB_CONST_MSUN,
-      star_r[get_global_idx(k)], star[knew].se_k, kprev0, kprev1);
+		star_r[get_global_idx(k)], star[knew].se_k, kprev0, kprev1,
+		star[knew].rad * units.l/ RSUN, binary[kb].rad1 * units.l / RSUN,binary[kb].rad2 * units.l / RSUN);
     destroy_obj(k);
     if (sqrt(vs[1]*vs[1]+vs[2]*vs[2]+vs[3]*vs[3]) != 0.0) {
       //dprintf("birth kick of %f km/s\n", sqrt(vs[0]*vs[0]+vs[1]*vs[1]+vs[2]*vs[2]));
@@ -1129,12 +1171,13 @@ void handle_bse_outcome(long k, long kb, double *vs, double tphysf, int kprev0, 
 	if(kprev0 == 14 && kprev1 == 14)
 		binary_bh_merger(k, kb, knew, kprev0, kprev1, curr_st);
 
-    parafprintf(semergedisruptfile, "t=%g disrupt2 idr=%ld(mr=%g) id1=%ld(m1=%g):id2=%ld(m2=%g) (r=%g) typer=%d type1=%d type2=%d\n",
+    parafprintf(semergedisruptfile, "t=%g disrupt2 idr=%ld(mr=%g) id1=%ld(m1=%g):id2=%ld(m2=%g) (r=%g) typer=%d type1=%d type2=%d radr[RSUN]=%g rad1[RSUN]=%g rad2[RSUN]=%g\n",
       TotalTime,
       star[knew].id, star[knew].se_mt,
       binary[kb].id1, binary[kb].m1 * units.mstar / FB_CONST_MSUN,
       binary[kb].id2, binary[kb].m2 * units.mstar / FB_CONST_MSUN,
-      star_r[get_global_idx(k)], star[knew].se_k, kprev0, kprev1);
+		star_r[get_global_idx(k)], star[knew].se_k, kprev0, kprev1,
+		star[knew].rad * units.l / RSUN, binary[kb].rad1 * units.l / RSUN, binary[kb].rad2 * units.l / RSUN);
 
     destroy_obj(k);
     if (sqrt(vs[1]*vs[1]+vs[2]*vs[2]+vs[3]*vs[3]) != 0.0) {
@@ -1315,7 +1358,7 @@ void write_morepulsar(long i){      //Shi
         if (j==0){ //Single
                 if (star[i].se_k==13){
                         spin = (twopi*yearsc)/star[i].se_ospin;
-                        parafprintf(morepulsarfile, "%ld %.8g 0 %ld -100 %.8g -100 %g -100 %g -100 %d -100 -100 -100 -100 -100 -100 -100 %.8g %.8g %.8g -100 -100 -100 -100 %d -100\n", tcount, TotalTime, star[i].id, star[i].se_mt, star[i].se_scm_B, spin, star[i].se_k, r, star[i].vr, star[i].vt, star[i].se_scm_formation);
+                        parafprintf(morepulsarfile, "%ld %.8g 0 %ld -100 %.8g -100 %g -100 %g -100 %d -100 -100 -100 -100 -100 -100 -100 %.8g %.8g %.8g -100 -100 -100 -100 %g -100\n", tcount, TotalTime, star[i].id, star[i].se_mt, star[i].se_scm_B, spin, star[i].se_k, r, star[i].vr, star[i].vt, star[i].se_scm_formation);
 
 
                 }
@@ -1323,7 +1366,7 @@ void write_morepulsar(long i){      //Shi
                 if (binary[j].bse_kw[0]==13 || binary[j].bse_kw[1]==13){
                         spin0 = (twopi*yearsc)/binary[j].bse_ospin[0];
                         spin1 = (twopi*yearsc)/binary[j].bse_ospin[1];
-                        parafprintf(morepulsarfile, "%ld %.8g 1 %ld %ld %.8g %.8g %g %g %g %g %d %d %.8g %.8g %g %g %g %g %.8g %.8g %.8g %g %g %g %g %d %d\n", tcount, TotalTime, binary[j].id1, binary[j].id2, binary[j].bse_mass[0], binary[j].bse_mass[1], binary[j].bse_bcm_B[0], binary[j].bse_bcm_B[1], spin0, spin1, binary[j].bse_kw[0], binary[j].bse_kw[1], binary[j].a* units.l/AU, binary[j].e, binary[j].bse_bcm_radrol[0], binary[j].bse_bcm_radrol[1], binary[j].bse_bcm_dmdt[0], binary[j].bse_bcm_dmdt[1], r, star[i].vr, star[i].vt, binary[j].bse_bacc[0], binary[j].bse_bacc[1], binary[j].bse_tacc[0], binary[j].bse_tacc[1], binary[j].bse_bcm_formation[0], binary[j].bse_bcm_formation[1]);
+                        parafprintf(morepulsarfile, "%ld %.8g 1 %ld %ld %.8g %.8g %g %g %g %g %d %d %.8g %.8g %g %g %g %g %.8g %.8g %.8g %g %g %g %g %g %g\n", tcount, TotalTime, binary[j].id1, binary[j].id2, binary[j].bse_mass[0], binary[j].bse_mass[1], binary[j].bse_bcm_B[0], binary[j].bse_bcm_B[1], spin0, spin1, binary[j].bse_kw[0], binary[j].bse_kw[1], binary[j].a* units.l/AU, binary[j].e, binary[j].bse_bcm_radrol[0], binary[j].bse_bcm_radrol[1], binary[j].bse_bcm_dmdt[0], binary[j].bse_bcm_dmdt[1], r, star[i].vr, star[i].vt, binary[j].bse_bacc[0], binary[j].bse_bacc[1], binary[j].bse_tacc[0], binary[j].bse_tacc[1], binary[j].bse_bcm_formation[0], binary[j].bse_bcm_formation[1]);
 
                 }
         }
@@ -1455,6 +1498,7 @@ void cp_binmemb_to_star(long k, int kbi, long knew)
   }
   star[knew].rad = binary[kb].bse_radius[kbi] * RSUN / units.l;
   star[knew].se_mass = binary[kb].bse_mass0[kbi]; /* initial mass (at curent epoch?) */
+  star[knew].se_zams_mass = binary[kb].bse_zams_mass[kbi]; /* initial mass (at curent epoch?) */
   star[knew].se_k = binary[kb].bse_kw[kbi];
   star[knew].se_mt = binary[kb].bse_mass[kbi]; /* current mass */
   star[knew].se_ospin = binary[kb].bse_ospin[kbi];
@@ -1498,6 +1542,7 @@ void cp_SEvars_to_newstar(long oldk, int kbi, long knew)
   
   if (kbi == -1) { /* star comes from input single star */
     star[knew].se_mass = star[oldk].se_mass;
+    star[knew].se_zams_mass = star[oldk].se_zams_mass;
     star[knew].se_k = star[oldk].se_k;
     star[knew].se_mt = star[oldk].se_mt;
     star[knew].se_ospin = star[oldk].se_ospin;
@@ -1522,6 +1567,7 @@ void cp_SEvars_to_newstar(long oldk, int kbi, long knew)
     star[knew].rad = star[oldk].rad;
   } else { /* star comes from input binary */
     star[knew].se_mass = binary[kb].bse_mass0[kbi];
+    star[knew].se_zams_mass = binary[kb].bse_zams_mass[kbi];
     star[knew].se_k = binary[kb].bse_kw[kbi];
     star[knew].se_mt = binary[kb].bse_mass[kbi];
     star[knew].se_ospin = binary[kb].bse_ospin[kbi];
@@ -1593,6 +1639,7 @@ void cp_SEvars_to_star(long oldk, int kbi, star_t *target_star)
   if (kbi == -1) { /* star comes from input single star */
     target_star->rad = star[oldk].rad; //PDK addition
     target_star->se_mass = star[oldk].se_mass;
+    target_star->se_zams_mass = star[oldk].se_zams_mass;
     target_star->se_k = star[oldk].se_k;
     target_star->se_mt = star[oldk].se_mt;
     target_star->se_ospin = star[oldk].se_ospin;
@@ -1617,6 +1664,7 @@ void cp_SEvars_to_star(long oldk, int kbi, star_t *target_star)
     target_star->lifetime = star[oldk].lifetime;
   } else { /* star comes from input binary */
     target_star->se_mass = binary[kb].bse_mass0[kbi];
+    target_star->se_zams_mass = binary[kb].bse_zams_mass[kbi];
     target_star->se_k = binary[kb].bse_kw[kbi];
     target_star->se_mt = binary[kb].bse_mass[kbi];
     target_star->se_ospin = binary[kb].bse_ospin[kbi];
@@ -1692,6 +1740,7 @@ void cp_SEvars_to_newbinary(long oldk, int oldkbi, long knew, int kbinew)
 
   if (oldkbi == -1) { /* star comes from input single star */
     binary[kbnew].bse_mass0[kbinew] = star[oldk].se_mass;
+    binary[kbnew].bse_zams_mass[kbinew] = star[oldk].se_zams_mass;
     binary[kbnew].bse_kw[kbinew] = star[oldk].se_k;
     binary[kbnew].bse_mass[kbinew] = star[oldk].se_mt;
     binary[kbnew].bse_ospin[kbinew] = star[oldk].se_ospin;
@@ -1722,6 +1771,7 @@ void cp_SEvars_to_newbinary(long oldk, int oldkbi, long knew, int kbinew)
     }
   } else { /* star comes from input binary */
     binary[kbnew].bse_mass0[kbinew] = binary[kbold].bse_mass0[oldkbi];
+    binary[kbnew].bse_zams_mass[kbinew] = binary[kbold].bse_zams_mass[oldkbi];
     binary[kbnew].bse_kw[kbinew] = binary[kbold].bse_kw[oldkbi];
     binary[kbnew].bse_mass[kbinew] = binary[kbold].bse_mass[oldkbi];
     binary[kbnew].bse_ospin[kbinew] = binary[kbold].bse_ospin[oldkbi];
@@ -1779,6 +1829,7 @@ void cp_SEvars_to_newbinary(long oldk, int oldkbi, long knew, int kbinew)
 void cp_starSEvars_to_binmember(star_t instar, long binindex, int bid)
 {
   binary[binindex].bse_mass0[bid] = instar.se_mass;
+  binary[binindex].bse_zams_mass[bid] = instar.se_zams_mass;
   binary[binindex].bse_kw[bid] = instar.se_k;
   binary[binindex].bse_mass[bid] = instar.se_mt;
   binary[binindex].bse_ospin[bid] = instar.se_ospin;
@@ -1827,6 +1878,66 @@ void cp_starmass_to_binmember(star_t instar, long binindex, int bid)
  }
 }
 
+/* The integrand for peters_t_insp */
+double peters_t_insp_integral(double e, void *params){
+        return pow(e,1.526315789) * pow(1+(0.3980263157894)*(e*e),0.513701609395) / pow(1-(e*e),1.5);
+}
+
+/* Cabrera 220428: The analytic expression for peters_t_insp as e->1 (Peters 1964, eq. 5.14+2) */
+double peters_t_insp_eccentric(double a, double e, double beta){
+        double Tc = 0.25 * a*a*a*a / beta;
+        return 1.807058823529 * Tc * pow(1-(e*e),3.5);
+}
+
+/* Compute the inspiral time for a binary (Eqn. 5.14, Peters 1964) */
+/* Cabrera 220428: Updated to calculate analytically if appropriate (e->1) */
+double peters_t_insp(double mG3c5, double a, double e){
+        double beta = (12.8) * mG3c5;
+        double c0 = a * (1-e*e) * pow(e,-0.631578947368) * pow(1+(0.3980263157894)*(e*e),-0.3784254023488);
+
+        gsl_function F;
+        F.function = &peters_t_insp_integral;
+        gsl_integration_workspace *w = gsl_integration_workspace_alloc(1000);;
+        double integral, error;
+        gsl_error_handler_t *old_handler;
+	
+	/* Save previous gsl error handler, so it can be turned back on */
+        old_handler = gsl_set_error_handler_off();
+	
+	/* Accept gsl_errno and use to diagnose */
+        int status = gsl_integration_qags(&F,0,e,1e-7,1e-8,1000, w,&integral, &error);
+        if (status == GSL_EDIVERGE) {
+		/* If the integral is diverging... */
+                dprintf("gsl_integration_qags diverging!\n");
+                dprintf("\tmG3c5=%e, a=%e, e=%e\n", mG3c5, a, e);
+                if (0.99<=e && e<=1.0) {
+			/* If the eccentricity is high... */
+                        dprintf("\t0.99 <= e <= 1.0; using analytic form...\n");
+                        integral = peters_t_insp_eccentric(a, e, beta);
+                } else {
+			/* Don't know what to do if it's not the eccentricity. */
+                        eprintf("gsl_integration_qags diverged, but e<0.99 (or e>1.0, I suppose) (gsl_errno=%d)\n", status);
+                        eprintf("\tmG3c5=%e, a=%e, e=%e\n", mG3c5, a, e);
+                        exit_cleanly(-1, __FUNCTION__);
+                }
+        } else if (status) {
+		/* If there's some other error... */
+                eprintf("gsl_integration_qags failed (gsl_errno=%d)\n", status);
+                eprintf("\tmG3c5=%e, a=%e, e=%e\n", mG3c5, a, e);
+                exit_cleanly(-1, __FUNCTION__);
+        } else {
+		/* If there's no error... */
+                integral *= 0.631578947368 * c0*c0*c0*c0 / beta;
+        }
+	
+	/* Reset to previous handler */
+        gsl_set_error_handler(old_handler);
+
+        gsl_integration_workspace_free (w);
+
+        return integral;
+}
+
 int rhs_peters(double t, const double y[], double f[], void *params){
 	/* dadt and dedt from Peters 1964; note that this is entirely in code units! */
 	double *mG3c5 = (double *) params;
@@ -1859,20 +1970,35 @@ void integrate_a_e_peters_eqn(long kb){
 	// main prefactor for Peters equations, in code units
 	double mG3c5 = m1*m2*(m1+m2)*madhoc*madhoc*madhoc / (clight*clight*clight*clight*clight);
 	double y[2] = {binary[kb].a, binary[kb].e};
+
+    /* remember that Dt is in relaxation times, NOT N-body times.  Convert it here*/
+    double t_final = Dt * ((double) clus.N_STAR)/ log(GAMMA * ((double) clus.N_STAR));
+    double t_to_merger = peters_t_insp(mG3c5, y[0], y[1]); 
+
+    /* integrator sometimes doesn't like going to merger; first check if it merges in this
+      timestep, and if so skip the ODE integrator */
+    if(t_to_merger < t_final){
+        collision = 1;
+        t = t_final;
+    }
 	
 	my_system.function = rhs_peters;
 	my_system.dimension = 2;
 	my_system.params = &mG3c5;
 
+    /* Need to be careful if we're near merger */
+    if(y[0] < 5e-7){
+        h = 1.e-12;
+        eps_abs = 1.e-14;
+        eps_rel = 1.e-14;
+    }
 
-	/* Finally, integrate for this timestep; remember that Dt is in relaxation times,
-     * NOT N-body times */
-    double t_final = Dt * ((double) clus.N_STAR)/ log(GAMMA * ((double) clus.N_STAR));
+	/* Finally, integrate for this timestep*/
 	while (t < t_final){
+
 		status = gsl_odeiv2_evolve_apply (evolve_ptr, control_ptr, step_ptr,
 								&my_system, &t, t_final, &h, y); 
 
-		//fprintf(stderr,"lol = %g %g %g %g %g \n",y[0]*units.l/AU,y[1],m1*units.mstar/MSUN,m2*units.mstar/MSUN,t);
 		/* Check for collisions at periapse */
 		if(y[0]*(1-y[1]) < BH_RADIUS_MULTIPLYER*(binary[kb].rad1 + binary[kb].rad2)){
 			collision = 1;
@@ -1880,7 +2006,7 @@ void integrate_a_e_peters_eqn(long kb){
 		}
 
 		/* Make sure the integrator does what it says it does...*/
-		if(status != GSL_SUCCESS){
+		if(status != GSL_SUCCESS | y[0] != y[0]){
 		    eprintf("GSL Integrator for the Peters equations failed; yell at Carl\n");
 		    exit_cleanly(-1, __FUNCTION__);
 			break;
