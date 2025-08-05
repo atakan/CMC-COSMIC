@@ -12,7 +12,7 @@ Running CMC
 ===========
 
 With our initial conditions in place, the hard part is actually over!  Assuming 
-the ``cmc`` executable is the directory you want to run from, we need only to 
+the ``cmc`` executable is in the directory you want to run from, we need only to 
 call it with ``mpirun`` (or ``mpiexec``, depending on your mpi version):
 
 .. code-block:: bash 
